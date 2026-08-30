@@ -18,6 +18,7 @@ import { MessageInputComponent } from './components/message-input/message-input.
 import { StatePanelComponent } from './components/state-panel/state-panel.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
+import { ApiKeySettingsComponent } from '../../shared/api-key-settings/api-key-settings.component';
 
 @Component({
   selector: 'app-chat',
@@ -29,7 +30,8 @@ import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portra
     MessageInputComponent,
     StatePanelComponent,
     LoadingSpinnerComponent,
-    ActorPortraitComponent
+    ActorPortraitComponent,
+    ApiKeySettingsComponent
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'

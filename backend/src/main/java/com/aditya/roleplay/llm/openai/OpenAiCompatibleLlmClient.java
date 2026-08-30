@@ -55,9 +55,15 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
 
     @Override
     public LlmResponse complete(LlmRequest request) {
-        String resolvedApiKey = apiKey.or(() -> legacyOpenAiApiKey).orElse("").trim();
+        return complete(request, null);
+    }
+
+    @Override
+    public LlmResponse complete(LlmRequest request, String apiKeyOverride) {
+        String resolvedApiKey = resolveApiKey(apiKeyOverride);
         if (resolvedApiKey.isBlank()) {
-            throw new LlmException("LLM API key is not configured. Set LLM_API_KEY or OPENAI_API_KEY in backend/.env");
+            throw new LlmException(
+                    "LLM API key is not configured. Enter your key in the app settings or set LLM_API_KEY / OPENAI_API_KEY on the server.");
         }
 
         try {
@@ -67,6 +73,13 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         } catch (Exception e) {
             throw new LlmException("Failed to call LLM: " + e.getMessage(), e);
         }
+    }
+
+    private String resolveApiKey(String apiKeyOverride) {
+        if (apiKeyOverride != null && !apiKeyOverride.isBlank()) {
+            return apiKeyOverride.trim();
+        }
+        return apiKey.or(() -> legacyOpenAiApiKey).orElse("").trim();
     }
 
     private LlmResponse callWithRetry(LlmRequest request, String resolvedApiKey, boolean isRetry) throws Exception {

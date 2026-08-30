@@ -61,6 +61,13 @@
   color: var(--text-primary);
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
 .fresh-btn {
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--border-subtle);

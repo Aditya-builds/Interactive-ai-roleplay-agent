@@ -9,11 +9,12 @@ import { RoleplayCharacter } from '../../core/models/character.model';
 import { PlayerPersona, Story } from '../../core/models/roleplay-setup.model';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
+import { ApiKeySettingsComponent } from '../../shared/api-key-settings/api-key-settings.component';
 
 @Component({
   selector: 'app-character-selection',
   standalone: true,
-  imports: [CommonModule, LoadingSpinnerComponent, ActorPortraitComponent],
+  imports: [CommonModule, LoadingSpinnerComponent, ActorPortraitComponent, ApiKeySettingsComponent],
   templateUrl: './character-selection.component.html',
   styleUrl: './character-selection.component.scss'
 })

@@ -14,6 +14,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 
 @Path("/api/conversations")
@@ -40,8 +42,12 @@ public class ConversationResource {
 
     @POST
     @Path("/{id}/messages")
-    public SendMessageResponse sendMessage(@PathParam("id") String id, SendMessageRequest request) {
-        return roleplayService.processTurn(id, request.content());
+    public SendMessageResponse sendMessage(
+            @PathParam("id") String id,
+            SendMessageRequest request,
+            @Context HttpHeaders headers) {
+        String userApiKey = headers.getHeaderString("X-LLM-Api-Key");
+        return roleplayService.processTurn(id, request.content(), userApiKey);
     }
 
     @DELETE

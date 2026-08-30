@@ -7,14 +7,17 @@
         <h1>{{ characterName || 'Loading...' }}</h1>
       </div>
     </div>
-    <button
-      type="button"
-      class="fresh-btn"
-      [disabled]="inputDisabled"
-      (click)="startFresh()"
-    >
-      {{ restarting ? 'Restarting...' : 'Start Fresh' }}
-    </button>
+    <div class="header-right">
+      <app-api-key-settings />
+      <button
+        type="button"
+        class="fresh-btn"
+        [disabled]="inputDisabled"
+        (click)="startFresh()"
+      >
+        {{ restarting ? 'Restarting...' : 'Start Fresh' }}
+      </button>
+    </div>
   </header>
 
   <main class="chat-main">

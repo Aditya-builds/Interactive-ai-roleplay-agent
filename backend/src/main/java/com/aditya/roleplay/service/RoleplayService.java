@@ -59,6 +59,10 @@ public class RoleplayService {
     LlmClient llmClient;
 
     public SendMessageResponse processTurn(String conversationId, String content) {
+        return processTurn(conversationId, content, null);
+    }
+
+    public SendMessageResponse processTurn(String conversationId, String content, String userApiKey) {
         validateContent(content);
         String trimmed = content.trim();
 
@@ -77,7 +81,7 @@ public class RoleplayService {
 
         LlmRequest llmRequest = promptService.build(
                 character, world, conversation, trimmed, allowedRelationshipTargets, playerPersona, story);
-        LlmResponse llmResponse = llmClient.complete(llmRequest);
+        LlmResponse llmResponse = llmClient.complete(llmRequest, userApiKey);
 
         if (!llmResponse.structuredParseSuccess() || llmResponse.turnResult() == null) {
             throw new LlmException("LLM returned invalid structured output. Turn was not saved.");
