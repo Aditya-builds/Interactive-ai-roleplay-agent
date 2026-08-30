@@ -17,7 +17,8 @@ public record RoleplayCharacter(
         List<String> values,
         CharacterPresence presence,
         List<Relationship> defaultRelationships,
-        List<SeedMemory> seedMemories) {
+        List<SeedMemory> seedMemories,
+        String openingMessage) {
 
     public RoleplayCharacter {
         defaultRelationships = defaultRelationships != null ? List.copyOf(defaultRelationships) : List.of();

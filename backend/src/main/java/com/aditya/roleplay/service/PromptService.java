@@ -34,6 +34,9 @@ public class PromptService {
     @ConfigProperty(name = "roleplay.llm.json-mode", defaultValue = "true")
     boolean jsonMode;
 
+    @ConfigProperty(name = "roleplay.state.max-relationship-delta", defaultValue = "3")
+    int maxRelationshipDelta;
+
     public LlmRequest build(
             RoleplayCharacter character,
             World world,
@@ -84,9 +87,16 @@ public class PromptService {
                 5. Maintain continuity with the scene, memories, events, and recent conversation.
                 6. Do not invent contradictory facts about the character or world.
                 7. Do not force romantic progression; let relationships develop naturally.
-                8. Only propose state changes justified by the current interaction.
+                8. Propose stateChanges every turn when the interaction affects mood, relationship, health, or scene dynamics. Narrative and stateChanges must agree.
                 9. Keep narrative responses concise: 1-4 short paragraphs unless the moment demands more.
                 10. Return ONLY valid JSON matching the schema below. No markdown, no extra text.
+
+                STATE CHANGE REQUIREMENTS (MANDATORY WHEN APPLICABLE)
+                - If the user shows care, concern, trust, or physical comfort (e.g. asking if they are alright, holding a hand): propose RELATIONSHIP trust and/or affection INCREASE (1-%d) AND EMOTION if %s's mood shifts.
+                - If your narrative describes %s's expression or mood changing (softens, gratitude, anger, worry, warmth, irritation, weariness): you MUST propose EMOTION with a specific value (grateful, warm, weary, guarded, irritated, focused, touched — not generic "calm" unless truly neutral).
+                - If %s mentions being tired, injured, or unwell: propose STATUS (exhausted or injured) and EMOTION (weary or pained) as appropriate.
+                - If the active scene dynamic changes (e.g. from reviewing reports to a personal moment, from talking to sparring): propose SCENE currentSituation SET to a short new description.
+                - Do not leave emotion, status, and situation unchanged when your narrative clearly describes a different mood or moment.
 
                 STRUCTURED OUTPUT SCHEMA
                 Return a single JSON object with these fields:
@@ -120,12 +130,14 @@ public class PromptService {
                 }
 
                 STATE CHANGE RULES
-                - RELATIONSHIP targetId is who %s has feelings toward: %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE (1-5) or SET (0-100).
-                - SCENE targetId must be "scene". Fields: location, time, currentSituation, currentConflict, charactersPresent, addCharacter, removeCharacter. Use SET only. Location slugs: guild_hall, forest, training_ground, etc. charactersPresent value is a JSON array string, e.g. ["%s","user"]. addCharacter/removeCharacter value is a single character id.
+                - RELATIONSHIP targetId is who %s has feelings toward: %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE (1-%d) or SET (0-100). Keep changes small and gradual.
+                - SCENE targetId must be "scene". Fields: location (NPC location), userLocation (user location when split), time, currentSituation, currentConflict, charactersPresent, addCharacter, removeCharacter. Use SET only. Location slugs: guild_hall, forest, training_ground, etc. charactersPresent lists who is with the NPC right now, e.g. ["%s","user"] when together, or ["%s"] when user left. SET currentSituation to "null" when an activity ends.
                 - HEALTH targetId must be %s. Field: current. Use INCREASE/DECREASE/SET for damage or healing.
-                - LOCATION targetId must be %s or "scene". Field: location. SET only. Updates scene and character location together.
-                - STATUS targetId must be %s. Field: status. SET only (injured, exhausted, or null).
-                - EMOTION targetId must be %s. Field: emotion. SET only (angry, calm, etc.).
+                - LOCATION targetId: use "%s" or "scene" when the NPC moves (updates NPC + scene location; user follows if still present). Use "user" when ONLY the user moves alone (does NOT move the NPC). Field: location. SET only.
+                - STATUS targetId must be %s. Field: status. SET only (injured, exhausted, or null). When you narrate injury or damage to %s, propose STATUS (injured) alongside HEALTH changes.
+                - EMOTION targetId must be %s. Field: emotion. SET only. Use specific emotions: grateful, warm, weary, guarded, irritated, focused, touched, angry, calm. Avoid defaulting to calm when the narrative shows a clear emotional shift.
+                - When the user leaves alone: LOCATION user + removeCharacter user (or SCENE userLocation), do NOT change NPC location.
+                - When location or participants change, clear stale situation by SET currentSituation to "null" unless setting a new one in the same turn.
                 - Propose at most 5 stateChanges per turn.
                 - Use empty arrays when nothing applies.
                 """.formatted(
@@ -139,14 +151,21 @@ public class PromptService {
                 world.description(),
                 rules,
                 character.name(),
+                maxRelationshipDelta,
+                character.name(),
+                character.name(),
+                character.name(),
                 relationshipTargets,
                 character.id(),
-                character.id(),
+                character.name(),
                 relationshipTargets,
+                maxRelationshipDelta,
                 character.id(),
                 character.id(),
                 character.id(),
                 character.id(),
+                character.id(),
+                character.name(),
                 character.id());
     }
 

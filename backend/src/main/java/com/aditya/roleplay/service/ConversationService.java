@@ -46,7 +46,7 @@ public class ConversationService {
                 relationshipService.createInitialRelationships(character),
                 List.of(),
                 characterService.seedMemoriesForCharacter(character, now),
-                List.of());
+                characterService.initialMessagesForCharacter(character, now));
 
         return storage.saveConversation(conversation);
     }
@@ -91,11 +91,11 @@ public class ConversationService {
         }
 
         if (updated.characterState() != null && updated.scene() != null) {
-            CharacterRuntimeState synced = storyStateService.syncLocationFromScene(
+            CharacterRuntimeState reconciled = storyStateService.reconcileCharacterLocation(
                     updated.characterState(), updated.scene());
-            if (synced != null && synced.location() != null
-                    && !synced.location().equals(updated.characterState().location())) {
-                updated = updated.withCharacterState(synced);
+            if (reconciled != null && reconciled.location() != null
+                    && !reconciled.location().equals(updated.characterState().location())) {
+                updated = updated.withCharacterState(reconciled);
                 needsSave = true;
             }
         }

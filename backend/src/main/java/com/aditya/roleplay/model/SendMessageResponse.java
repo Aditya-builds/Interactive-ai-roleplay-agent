@@ -6,5 +6,6 @@ public record SendMessageResponse(
         Message message,
         String conversationId,
         Scene scene,
+        CharacterRuntimeState characterState,
         List<Relationship> relationships) {
 }

@@ -20,7 +20,7 @@ import { CommonModule } from '@angular/common';
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 1rem;
+      padding: 2rem 1rem;
       justify-content: center;
     }
 
@@ -29,10 +29,10 @@ import { CommonModule } from '@angular/common';
     }
 
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: #6366f1;
+      background: var(--accent, #8b9cb3);
       animation: bounce 1.4s infinite ease-in-out both;
     }
 
@@ -40,12 +40,12 @@ import { CommonModule } from '@angular/common';
     .dot:nth-child(2) { animation-delay: -0.16s; }
 
     @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0); }
-      40% { transform: scale(1); }
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
+      40% { opacity: 1; transform: scale(1); }
     }
 
     .label {
-      color: #64748b;
+      color: var(--text-muted, #6b7280);
       font-size: 0.875rem;
     }
   `]

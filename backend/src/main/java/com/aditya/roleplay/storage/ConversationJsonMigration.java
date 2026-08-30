@@ -40,10 +40,14 @@ final class ConversationJsonMigration {
         if (object.has("characterState") && object.get("characterState").isObject()
                 && object.has("scene") && object.get("scene").isObject()) {
             ObjectNode characterState = (ObjectNode) object.get("characterState");
-            String sceneLocation = object.get("scene").path("location").asText("");
+            ObjectNode scene = (ObjectNode) object.get("scene");
+            String sceneLocation = scene.path("location").asText("");
             if (!sceneLocation.isBlank()
                     && (!characterState.has("location") || characterState.get("location").asText("").isBlank())) {
                 characterState.put("location", sceneLocation);
+            }
+            if (!scene.has("userLocation") || scene.get("userLocation").asText("").isBlank()) {
+                scene.put("userLocation", sceneLocation);
             }
         }
 

@@ -1,5 +1,6 @@
 package com.aditya.roleplay.service;
 
+import com.aditya.roleplay.model.Scene;
 import com.aditya.roleplay.model.turn.StateChange;
 import com.aditya.roleplay.model.turn.StateChangeOperation;
 import com.aditya.roleplay.model.turn.StateChangeType;
@@ -38,7 +39,7 @@ class StateChangeValidatorTest {
     }
 
     @Test
-    void rejectsRemovingUserFromScene() {
+    void acceptsRemovingUserFromScene() {
         StateChangeValidator.ValidationResult result = validator.validate(
                 new StateChange(
                         StateChangeType.SCENE,
@@ -48,6 +49,51 @@ class StateChangeValidatorTest {
                         "user"),
                 "aurora",
                 Set.of("user"));
+
+        assertTrue(result.valid());
+    }
+
+    @Test
+    void rejectsOmittingUserFromCharactersPresentWhileCoLocated() {
+        Scene scene = new Scene("guild_hall", "guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null);
+
+        StateChangeValidator.ValidationResult result = validator.validate(
+                new StateChange(
+                        StateChangeType.SCENE,
+                        "scene",
+                        "charactersPresent",
+                        StateChangeOperation.SET,
+                        "[\"aurora\"]"),
+                "aurora",
+                Set.of("user"),
+                scene);
+
+        assertFalse(result.valid());
+    }
+
+    @Test
+    void rejectsRelationshipDeltaAboveMax() {
+        StateChangeValidator.ValidationResult result = validator.validate(
+                new StateChange(
+                        StateChangeType.RELATIONSHIP,
+                        "user",
+                        "trust",
+                        StateChangeOperation.INCREASE,
+                        "8"),
+                "aurora",
+                Set.of("user"));
+
+        assertFalse(result.valid());
+    }
+
+    @Test
+    void rejectsTotalRelationshipDeltaAboveBatchMax() {
+        List<StateChange> changes = List.of(
+                new StateChange(StateChangeType.RELATIONSHIP, "user", "trust", StateChangeOperation.INCREASE, "3"),
+                new StateChange(StateChangeType.RELATIONSHIP, "user", "respect", StateChangeOperation.INCREASE, "3"),
+                new StateChange(StateChangeType.RELATIONSHIP, "user", "affection", StateChangeOperation.INCREASE, "3"));
+
+        StateChangeValidator.ValidationResult result = validator.validateBatch(changes, "aurora", Set.of("user"));
 
         assertFalse(result.valid());
     }
@@ -73,6 +119,21 @@ class StateChangeValidatorTest {
                 new StateChange(
                         StateChangeType.LOCATION,
                         "aurora",
+                        "location",
+                        StateChangeOperation.SET,
+                        "forest"),
+                "aurora",
+                Set.of("user"));
+
+        assertTrue(result.valid());
+    }
+
+    @Test
+    void acceptsUserLocationChange() {
+        StateChangeValidator.ValidationResult result = validator.validate(
+                new StateChange(
+                        StateChangeType.LOCATION,
+                        "user",
                         "location",
                         StateChangeOperation.SET,
                         "forest"),

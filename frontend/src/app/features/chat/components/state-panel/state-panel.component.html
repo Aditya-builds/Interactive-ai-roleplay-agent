@@ -1,0 +1,88 @@
+<section class="state-panel">
+  <div class="state-column scene-column">
+    <h3>Current Scene</h3>
+    <dl>
+      <div class="row">
+        <dt>Location</dt>
+        <dd>{{ npcLocation }}</dd>
+      </div>
+      @if (userLocationLabel) {
+        <div class="row">
+          <dt>Your location</dt>
+          <dd>{{ userLocationLabel }}</dd>
+        </div>
+      }
+      <div class="row">
+        <dt>Time</dt>
+        <dd>{{ formatTime(scene.time) }}</dd>
+      </div>
+      @if (scene.currentSituation) {
+        <div class="row">
+          <dt>Situation</dt>
+          <dd>{{ scene.currentSituation }}</dd>
+        </div>
+      }
+      @if (scene.currentConflict) {
+        <div class="row">
+          <dt>Conflict</dt>
+          <dd>{{ scene.currentConflict }}</dd>
+        </div>
+      }
+    </dl>
+    <div class="present-block">
+      <h4>Characters Present</h4>
+      <ul>
+        @for (name of presentNames; track name) {
+          <li>{{ name }}</li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  <div class="state-column character-column">
+    <h3>Character</h3>
+    <p class="character-name">{{ characterName }}</p>
+    @if (characterState) {
+      <dl>
+        <div class="row">
+          <dt>Health</dt>
+          <dd>{{ characterState.health.current }}/{{ characterState.health.max }}</dd>
+        </div>
+        <div class="row">
+          <dt>Status</dt>
+          <dd>{{ formatStatus(characterState.status, characterState.health) }}</dd>
+        </div>
+        <div class="row">
+          <dt>Emotion</dt>
+          <dd>{{ formatEmotion(characterState.emotion) }}</dd>
+        </div>
+      </dl>
+    }
+  </div>
+
+  <div class="state-column relationship-column">
+    <h3>Relationship</h3>
+    @if (userRel) {
+      <dl>
+        <div class="row">
+          <dt>Trust</dt>
+          <dd>{{ userRel.trust }}</dd>
+        </div>
+        <div class="row">
+          <dt>Respect</dt>
+          <dd>{{ userRel.respect }}</dd>
+        </div>
+        <div class="row">
+          <dt>Affection</dt>
+          <dd>{{ userRel.affection }}</dd>
+        </div>
+        <div class="row">
+          <dt>Familiarity</dt>
+          <dd>{{ userRel.familiarity }}</dd>
+        </div>
+      </dl>
+    } @else {
+      <p class="muted">No relationship tracked yet.</p>
+    }
+  </div>
+</section>

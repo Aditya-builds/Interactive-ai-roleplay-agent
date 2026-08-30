@@ -2,18 +2,32 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subscription } from 'rxjs';
+import { Subscription, switchMap } from 'rxjs';
 import { ConversationApiService } from '../../core/services/conversation-api.service';
 import { CharacterApiService } from '../../core/services/character-api.service';
-import { formatLocationSlug, Message, Scene } from '../../core/models/conversation.model';
+import {
+  CharacterRuntimeState,
+  Conversation,
+  Message,
+  Relationship,
+  Scene
+} from '../../core/models/conversation.model';
 import { MessageListComponent } from './components/message-list/message-list.component';
 import { MessageInputComponent } from './components/message-input/message-input.component';
+import { StatePanelComponent } from './components/state-panel/state-panel.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, RouterLink, MessageListComponent, MessageInputComponent, LoadingSpinnerComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MessageListComponent,
+    MessageInputComponent,
+    StatePanelComponent,
+    LoadingSpinnerComponent
+  ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
 })
@@ -24,14 +38,15 @@ export class ChatComponent implements OnInit, OnDestroy {
   characterId = '';
   characterName = '';
   characterImageUrl = '';
-  worldName = '';
-  sceneLocation = '';
   scene: Scene | null = null;
+  characterState: CharacterRuntimeState | null = null;
+  relationships: Relationship[] = [];
   messages: Message[] = [];
   loading = true;
   sending = false;
   restarting = false;
-  error = '';
+  sendError = false;
+  pendingMessage = '';
   private routeSub?: Subscription;
 
   constructor(
@@ -44,7 +59,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.routeSub = this.route.paramMap.subscribe(params => {
       this.conversationId = params.get('conversationId') ?? '';
-      this.messages = [];
+      this.resetView();
       this.loadConversation();
     });
   }
@@ -53,22 +68,29 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.routeSub?.unsubscribe();
   }
 
+  get consideringLabel(): string {
+    const name = this.characterName || 'The character';
+    return `${name} is considering what to say...`;
+  }
+
+  get inputDisabled(): boolean {
+    return this.loading || this.sending || this.restarting;
+  }
+
   loadConversation(): void {
     this.loading = true;
-    this.error = '';
+    this.sendError = false;
 
     this.conversationApi.getConversation(this.conversationId).subscribe({
       next: (conversation) => {
-        this.messages = conversation.messages;
-        this.characterId = conversation.characterId;
-        this.updateScene(conversation.scene);
+        this.applyConversation(conversation);
         this.loading = false;
         this.loadCharacterInfo(conversation.characterId);
         this.scrollToBottom();
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.loading = false;
-        this.error = err.error?.error ?? 'Failed to load conversation.';
+        this.sendError = true;
       }
     });
   }
@@ -77,7 +99,6 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.characterApi.getCharacter(characterId).subscribe({
       next: (detail) => {
         this.characterName = detail.character.name;
-        this.worldName = detail.world.name;
         this.characterImageUrl = detail.character.imageUrl ?? '';
       }
     });
@@ -89,7 +110,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
 
     this.restarting = true;
-    this.error = '';
+    this.sendError = false;
 
     this.conversationApi.deleteConversation(this.conversationId).subscribe({
       next: () => this.createNewConversation(),
@@ -97,22 +118,14 @@ export class ChatComponent implements OnInit, OnDestroy {
     });
   }
 
-  private createNewConversation(): void {
-    this.conversationApi.createConversation(this.characterId).subscribe({
-      next: (conversation) => {
-        this.restarting = false;
-        this.router.navigate(['/chat', conversation.id]);
-      },
-      error: (err: HttpErrorResponse) => {
-        this.restarting = false;
-        this.error = err.error?.error ?? 'Failed to start a fresh conversation.';
-      }
-    });
-  }
-
   onSend(content: string): void {
+    if (this.sending) {
+      return;
+    }
+
     this.sending = true;
-    this.error = '';
+    this.sendError = false;
+    this.pendingMessage = content;
 
     const optimisticUserMessage: Message = {
       id: `temp-${Date.now()}`,
@@ -123,28 +136,66 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.messages = [...this.messages, optimisticUserMessage];
     this.scrollToBottom();
 
-    this.conversationApi.sendMessage(this.conversationId, content).subscribe({
-      next: (response) => {
-        this.messages = [
-          ...this.messages.filter(m => m.id !== optimisticUserMessage.id),
-          { ...optimisticUserMessage, id: `user-${Date.now()}` },
-          response.message
-        ];
-        this.updateScene(response.scene);
+    this.conversationApi.sendMessage(this.conversationId, content).pipe(
+      switchMap(() => this.conversationApi.getConversation(this.conversationId))
+    ).subscribe({
+      next: (conversation) => {
+        this.applyConversation(conversation);
+        this.pendingMessage = '';
         this.sending = false;
         this.scrollToBottom();
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.messages = this.messages.filter(m => m.id !== optimisticUserMessage.id);
         this.sending = false;
-        this.error = err.error?.error ?? 'Failed to send message. Please try again.';
+        this.sendError = true;
       }
     });
   }
 
-  private updateScene(scene: Scene): void {
-    this.scene = scene;
-    this.sceneLocation = formatLocationSlug(scene.location);
+  retrySend(): void {
+    if (!this.pendingMessage || this.sending) {
+      if (!this.pendingMessage && this.loading) {
+        this.loadConversation();
+      }
+      return;
+    }
+    this.onSend(this.pendingMessage);
+  }
+
+  private createNewConversation(): void {
+    this.conversationApi.createConversation(this.characterId).subscribe({
+      next: (conversation) => {
+        this.restarting = false;
+        this.router.navigate(['/chat', conversation.id]);
+      },
+      error: () => {
+        this.restarting = false;
+        this.sendError = true;
+      }
+    });
+  }
+
+  private applyConversation(conversation: Conversation): void {
+    this.messages = [...conversation.messages];
+    this.characterId = conversation.characterId;
+    this.scene = conversation.scene ? { ...conversation.scene, charactersPresent: [...conversation.scene.charactersPresent] } : null;
+    this.characterState = conversation.characterState
+      ? {
+          ...conversation.characterState,
+          health: { ...conversation.characterState.health }
+        }
+      : null;
+    this.relationships = conversation.relationships.map(r => ({ ...r }));
+  }
+
+  private resetView(): void {
+    this.messages = [];
+    this.scene = null;
+    this.characterState = null;
+    this.relationships = [];
+    this.sendError = false;
+    this.pendingMessage = '';
   }
 
   private scrollToBottom(): void {

@@ -3,7 +3,7 @@
     [(ngModel)]="content"
     [disabled]="disabled"
     (keydown)="onKeydown($event)"
-    placeholder="Type your action or dialogue..."
+    placeholder="Type your dialogue or action..."
     rows="3"
   ></textarea>
   <button type="button" (click)="onSend()" [disabled]="disabled || !content.trim()">

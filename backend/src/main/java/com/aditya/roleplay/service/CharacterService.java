@@ -2,6 +2,8 @@ package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.model.CharacterDetailResponse;
+import com.aditya.roleplay.model.Message;
+import com.aditya.roleplay.model.Role;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.SeedMemory;
 import com.aditya.roleplay.model.StoryMemoryEntry;
@@ -62,6 +64,17 @@ public class CharacterService {
         return character.seedMemories().stream()
                 .map(seed -> toMemoryEntry(seed, now))
                 .collect(Collectors.toList());
+    }
+
+    public List<Message> initialMessagesForCharacter(RoleplayCharacter character, Instant now) {
+        if (character.openingMessage() == null || character.openingMessage().isBlank()) {
+            return List.of();
+        }
+        return List.of(new Message(
+                UUID.randomUUID().toString(),
+                Role.ASSISTANT,
+                character.openingMessage().trim(),
+                now));
     }
 
     private StoryMemoryEntry toMemoryEntry(SeedMemory seed, Instant now) {

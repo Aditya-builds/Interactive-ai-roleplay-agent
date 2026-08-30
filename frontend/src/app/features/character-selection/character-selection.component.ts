@@ -8,17 +8,17 @@ import { RoleplayCharacter } from '../../core/models/character.model';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
-  selector: 'app-character-select',
+  selector: 'app-character-selection',
   standalone: true,
   imports: [CommonModule, LoadingSpinnerComponent],
-  templateUrl: './character-select.component.html',
-  styleUrl: './character-select.component.scss'
+  templateUrl: './character-selection.component.html',
+  styleUrl: './character-selection.component.scss'
 })
-export class CharacterSelectComponent implements OnInit {
+export class CharacterSelectionComponent implements OnInit {
   characters: RoleplayCharacter[] = [];
   loading = true;
   starting = false;
-  error = '';
+  loadError = false;
 
   constructor(
     private characterApi: CharacterApiService,
@@ -27,34 +27,45 @@ export class CharacterSelectComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadCharacters();
+  }
+
+  loadCharacters(): void {
+    this.loading = true;
+    this.loadError = false;
+
     this.characterApi.listCharacters().subscribe({
       next: (characters) => {
         this.characters = characters;
         this.loading = false;
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.loading = false;
-        this.error = err.error?.error ?? 'Failed to load characters.';
+        this.loadError = true;
       }
     });
   }
 
-  selectCharacter(character: RoleplayCharacter): void {
+  startConversation(character: RoleplayCharacter): void {
     if (this.starting) {
       return;
     }
 
     this.starting = true;
-    this.error = '';
+    this.loadError = false;
 
     this.conversationApi.createConversation(character.id).subscribe({
       next: (conversation) => {
         this.router.navigate(['/chat', conversation.id]);
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.starting = false;
-        this.error = err.error?.error ?? 'Failed to start conversation.';
+        this.loadError = true;
       }
     });
+  }
+
+  personalitySummary(character: RoleplayCharacter): string {
+    return character.personality.slice(0, 3).join(' · ');
   }
 }

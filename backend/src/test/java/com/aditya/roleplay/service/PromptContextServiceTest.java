@@ -31,7 +31,7 @@ class PromptContextServiceTest {
                 now,
                 now,
                 null,
-                new Scene("guild_hall", "evening", List.of("aurora", "user"), "Waiting.", null),
+                new Scene("guild_hall", null, "evening", List.of("aurora", "user"), "Waiting.", null),
                 List.of(new Relationship("user", 42, 67, 12, 54, 8)),
                 List.of(new StoryEvent("e1", "Aurora was ambushed.", now, List.of("aurora"), 0.9)),
                 List.of(

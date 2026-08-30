@@ -1,50 +1,59 @@
 .input-area {
   display: flex;
   gap: 0.75rem;
-  padding: 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: #fff;
+  padding: 0.85rem 1.25rem 1rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
 }
 
 textarea {
   flex: 1;
   resize: vertical;
-  min-height: 72px;
-  padding: 0.75rem;
-  border: 1px solid #cbd5e1;
+  min-height: 64px;
+  max-height: 160px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.4;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+textarea::placeholder {
+  color: var(--text-muted);
 }
 
 textarea:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: var(--border-strong);
 }
 
 textarea:disabled {
-  background: #f1f5f9;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 button {
   align-self: flex-end;
-  padding: 0.65rem 1.25rem;
-  background: #6366f1;
-  color: #fff;
-  border: none;
+  padding: 0.6rem 1.15rem;
+  background: var(--accent-user);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-weight: 600;
+  font-size: 0.88rem;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 button:hover:not(:disabled) {
-  background: #4f46e5;
+  background: #4a5d7a;
+  border-color: #5a6d8a;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }

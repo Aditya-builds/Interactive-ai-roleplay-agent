@@ -8,8 +8,8 @@ import com.aditya.roleplay.model.turn.StateChangeType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StoryStateServiceTest {
 
@@ -35,7 +35,7 @@ class StoryStateServiceTest {
     }
 
     @Test
-    void syncsCharacterLocationFromScene() {
+    void reconcilesCharacterLocationFromScene() {
         CharacterRuntimeState state = new CharacterRuntimeState(
                 "aurora",
                 new CharacterHealth(100, 100),
@@ -43,17 +43,42 @@ class StoryStateServiceTest {
                 null,
                 null);
         var scene = new com.aditya.roleplay.model.Scene(
-                "forest", "evening", java.util.List.of("aurora", "user"), "In the woods.", null);
+                "forest", null, "evening", java.util.List.of("aurora", "user"), "In the woods.", null);
 
-        CharacterRuntimeState synced = storyStateService.syncLocationFromScene(state, scene);
+        CharacterRuntimeState synced = storyStateService.reconcileCharacterLocation(state, scene);
 
         assertEquals("forest", synced.location());
     }
 
     @Test
+    void userLocationChangeRemovesUserFromPresenceAndClearsSituation() {
+        var scene = new com.aditya.roleplay.model.Scene(
+                "guild_hall", "guild_hall", "evening", java.util.List.of("aurora", "user"), "Sharing a meal.", null);
+
+        var updated = storyStateService.applyUserLocationChange(scene, "forest");
+
+        assertEquals("guild_hall", updated.location());
+        assertEquals("forest", updated.userLocation());
+        assertEquals(java.util.List.of("aurora"), updated.charactersPresent());
+        assertNull(updated.currentSituation());
+    }
+
+    @Test
+    void npcLocationChangeMovesCoLocatedUser() {
+        var scene = new com.aditya.roleplay.model.Scene(
+                "guild_hall", "guild_hall", "evening", java.util.List.of("aurora", "user"), "Quiet.", null);
+
+        var updated = storyStateService.applyNpcLocationChange(scene, "training_ground");
+
+        assertEquals("training_ground", updated.location());
+        assertEquals("training_ground", updated.userLocation());
+        assertNull(updated.currentSituation());
+    }
+
+    @Test
     void addsCharacterToSceneWithoutDuplicates() {
         var scene = new com.aditya.roleplay.model.Scene(
-                "guild_hall", "evening", java.util.List.of("aurora", "user"), "Quiet.", null);
+                "guild_hall", null, "evening", java.util.List.of("aurora", "user"), "Quiet.", null);
 
         var updated = storyStateService.applySceneChange(scene, new StateChange(
                 StateChangeType.SCENE, "scene", "addCharacter", StateChangeOperation.SET, "laxus"));
@@ -64,9 +89,9 @@ class StoryStateServiceTest {
     }
 
     @Test
-    void removesCharacterButKeepsUser() {
+    void removesNpcButKeepsUserWhenCoLocated() {
         var scene = new com.aditya.roleplay.model.Scene(
-                "guild_hall", "evening", java.util.List.of("aurora", "user", "laxus"), "Busy.", null);
+                "guild_hall", null, "evening", java.util.List.of("aurora", "user", "laxus"), "Busy.", null);
 
         var updated = storyStateService.applySceneChange(scene, new StateChange(
                 StateChangeType.SCENE, "scene", "removeCharacter", StateChangeOperation.SET, "laxus"));
@@ -75,12 +100,27 @@ class StoryStateServiceTest {
     }
 
     @Test
-    void cannotRemoveUserFromScene() {
+    void canRemoveUserFromScene() {
         var scene = new com.aditya.roleplay.model.Scene(
-                "guild_hall", "evening", java.util.List.of("aurora", "user"), "Quiet.", null);
+                "guild_hall", "guild_hall", "evening", java.util.List.of("aurora", "user"), "Quiet.", null);
 
-        assertThrows(IllegalArgumentException.class, () -> storyStateService.applySceneChange(scene, new StateChange(
-                StateChangeType.SCENE, "scene", "removeCharacter", StateChangeOperation.SET, "user")));
+        var updated = storyStateService.applySceneChange(scene, new StateChange(
+                StateChangeType.SCENE, "scene", "removeCharacter", StateChangeOperation.SET, "user"));
+
+        assertEquals(java.util.List.of("aurora"), updated.charactersPresent());
+        assertNull(updated.currentSituation());
+    }
+
+    @Test
+    void clearsSituationWhenNpcLocationChanges() {
+        var scene = new com.aditya.roleplay.model.Scene(
+                "guild_hall", null, "evening", java.util.List.of("aurora", "user"), "Sharing a meal.", null);
+
+        var updated = storyStateService.applySceneChange(scene, new StateChange(
+                StateChangeType.SCENE, "scene", "location", StateChangeOperation.SET, "forest"));
+
+        assertEquals("forest", updated.location());
+        assertNull(updated.currentSituation());
     }
 
     @Test

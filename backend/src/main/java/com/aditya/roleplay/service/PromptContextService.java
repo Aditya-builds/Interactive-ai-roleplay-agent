@@ -39,13 +39,15 @@ public class PromptContextService {
                 USER MESSAGE
                 %s
 
+                REMINDER: If your response describes %s's mood or the scene dynamic differently from the CURRENT SITUATION above, include matching stateChanges (EMOTION, STATUS, currentSituation, RELATIONSHIP) in your JSON.
                 Return the structured JSON turn result now. Narrative goes in "response" only.
                 """.formatted(
                 formatCurrentSituation(conversation),
                 formatRecentEvents(conversation),
                 formatImportantMemories(conversation),
                 formatRelationships(conversation, allowedRelationshipTargets),
-                latestUserMessage);
+                latestUserMessage,
+                conversation.characterId());
     }
 
     private String formatCurrentSituation(Conversation conversation) {
@@ -59,29 +61,30 @@ public class PromptContextService {
         String conflict = scene.currentConflict() != null ? scene.currentConflict() : "none";
         String status = runtime != null && runtime.status() != null ? runtime.status() : "none";
         String emotion = runtime != null && runtime.emotion() != null ? runtime.emotion() : "none";
-        String runtimeLocation = runtime != null && runtime.location() != null ? runtime.location() : scene.location();
+        String npcLocation = runtime != null && runtime.location() != null ? runtime.location() : scene.location();
+        String userLocation = scene.userLocation();
+        String situation = scene.currentSituation() != null ? scene.currentSituation() : "none";
 
         return """
-                Location: %s
+                NPC location: %s
+                User location: %s
                 Time: %s
-                Present: %s
+                Present with NPC: %s
                 Situation: %s
                 Conflict: %s
                 %s health: %d/%d
-                %s location: %s
                 Status: %s
                 Emotion: %s
                 """.formatted(
-                scene.location(),
+                npcLocation,
+                userLocation,
                 scene.time(),
                 present,
-                scene.currentSituation(),
+                situation,
                 conflict,
                 conversation.characterId(),
                 health.current(),
                 health.max(),
-                conversation.characterId(),
-                runtimeLocation,
                 status,
                 emotion).stripTrailing();
     }

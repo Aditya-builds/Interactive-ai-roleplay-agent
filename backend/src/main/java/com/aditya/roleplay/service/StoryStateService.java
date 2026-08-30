@@ -24,8 +24,10 @@ public class StoryStateService {
     public Scene createInitialScene(RoleplayCharacter character) {
         CharacterPresence presence = character.presence();
         if (presence != null) {
+            String location = presence.defaultLocation();
             return new Scene(
-                    presence.defaultLocation(),
+                    location,
+                    location,
                     presence.defaultTime(),
                     List.of(character.id(), "user"),
                     presence.description(),
@@ -33,6 +35,7 @@ public class StoryStateService {
         }
 
         return new Scene(
+                "unknown",
                 "unknown",
                 "unknown",
                 List.of(character.id(), "user"),
@@ -50,8 +53,12 @@ public class StoryStateService {
         return new CharacterRuntimeState(character.id(), health, location, null, null);
     }
 
-    public CharacterRuntimeState syncLocationFromScene(CharacterRuntimeState state, Scene scene) {
+    /** Ensures NPC runtime location matches scene.location (NPC scene anchor). */
+    public CharacterRuntimeState reconcileCharacterLocation(CharacterRuntimeState state, Scene scene) {
         if (state == null || scene == null) {
+            return state;
+        }
+        if (scene.location().equals(state.location())) {
             return state;
         }
         return new CharacterRuntimeState(
@@ -64,50 +71,41 @@ public class StoryStateService {
 
     public Scene applySceneChange(Scene scene, StateChange change) {
         return switch (change.field()) {
-            case "location" -> new Scene(
-                    change.value(),
-                    scene.time(),
+            case "location" -> applyNpcLocationChange(scene, change.value());
+            case "userLocation" -> applyUserLocationChange(scene, change.value());
+            case "time" -> copyScene(scene, scene.location(), scene.userLocation(), change.value(),
+                    scene.charactersPresent(), scene.currentSituation(), scene.currentConflict());
+            case "currentSituation" -> copyScene(scene, scene.location(), scene.userLocation(), scene.time(),
                     scene.charactersPresent(),
-                    scene.currentSituation(),
+                    "null".equalsIgnoreCase(change.value()) ? null : change.value(),
                     scene.currentConflict());
-            case "time" -> new Scene(
-                    scene.location(),
-                    change.value(),
-                    scene.charactersPresent(),
-                    scene.currentSituation(),
-                    scene.currentConflict());
-            case "currentSituation" -> new Scene(
-                    scene.location(),
-                    scene.time(),
-                    scene.charactersPresent(),
-                    change.value(),
-                    scene.currentConflict());
-            case "currentConflict" -> new Scene(
-                    scene.location(),
-                    scene.time(),
-                    scene.charactersPresent(),
-                    scene.currentSituation(),
+            case "currentConflict" -> copyScene(scene, scene.location(), scene.userLocation(), scene.time(),
+                    scene.charactersPresent(), scene.currentSituation(),
                     "null".equalsIgnoreCase(change.value()) ? null : change.value());
-            case "charactersPresent" -> new Scene(
-                    scene.location(),
-                    scene.time(),
-                    parseCharactersPresent(change.value()),
-                    scene.currentSituation(),
-                    scene.currentConflict());
-            case "addCharacter" -> new Scene(
-                    scene.location(),
-                    scene.time(),
-                    addCharacterPresent(scene.charactersPresent(), change.value()),
-                    scene.currentSituation(),
-                    scene.currentConflict());
-            case "removeCharacter" -> new Scene(
-                    scene.location(),
-                    scene.time(),
-                    removeCharacterPresent(scene.charactersPresent(), change.value()),
-                    scene.currentSituation(),
-                    scene.currentConflict());
+            case "charactersPresent" -> applyCharactersPresentChange(scene, parseCharactersPresent(change.value()));
+            case "addCharacter" -> applyAddCharacter(scene, change.value());
+            case "removeCharacter" -> applyRemoveCharacter(scene, change.value());
             default -> scene;
         };
+    }
+
+    public Scene applyNpcLocationChange(Scene scene, String location) {
+        String userLocation = scene.charactersPresent().contains("user") ? location : scene.userLocation();
+        return copyScene(scene, location, userLocation, scene.time(), scene.charactersPresent(), null, scene.currentConflict());
+    }
+
+    public Scene applyUserLocationChange(Scene scene, String location) {
+        List<String> present = new ArrayList<>(scene.charactersPresent());
+        if (!location.equals(scene.location())) {
+            present.removeIf("user"::equals);
+        } else if (!present.contains("user")) {
+            present.add("user");
+        }
+        if (present.isEmpty()) {
+            throw new IllegalArgumentException("charactersPresent cannot be empty");
+        }
+        return copyScene(scene, scene.location(), location, scene.time(), dedupePreservingOrder(present), null,
+                scene.currentConflict());
     }
 
     public CharacterRuntimeState applyHealthChange(CharacterRuntimeState state, StateChange change) {
@@ -151,6 +149,44 @@ public class StoryStateService {
                 emotion);
     }
 
+    private Scene applyCharactersPresentChange(Scene scene, List<String> ids) {
+        return copyScene(scene, scene.location(), scene.userLocation(), scene.time(), ids, null, scene.currentConflict());
+    }
+
+    private Scene applyAddCharacter(Scene scene, String characterId) {
+        List<String> updated = new ArrayList<>(scene.charactersPresent());
+        if (!updated.contains(characterId)) {
+            updated.add(characterId);
+        }
+        if (scene.userCoLocated() && !updated.contains("user")) {
+            updated.add("user");
+        }
+        return copyScene(scene, scene.location(), scene.userLocation(), scene.time(),
+                dedupePreservingOrder(updated), scene.currentSituation(), scene.currentConflict());
+    }
+
+    private Scene applyRemoveCharacter(Scene scene, String characterId) {
+        List<String> updated = new ArrayList<>(scene.charactersPresent());
+        updated.removeIf(id -> id.equals(characterId));
+        if (updated.isEmpty()) {
+            throw new IllegalArgumentException("charactersPresent cannot be empty");
+        }
+        String situation = "user".equals(characterId) ? null : scene.currentSituation();
+        return copyScene(scene, scene.location(), scene.userLocation(), scene.time(),
+                dedupePreservingOrder(updated), situation, scene.currentConflict());
+    }
+
+    private Scene copyScene(
+            Scene scene,
+            String location,
+            String userLocation,
+            String time,
+            List<String> charactersPresent,
+            String currentSituation,
+            String currentConflict) {
+        return new Scene(location, userLocation, time, charactersPresent, currentSituation, currentConflict);
+    }
+
     private List<String> parseCharactersPresent(String value) {
         try {
             List<String> parsed = objectMapper.readValue(value.trim(), new TypeReference<>() {});
@@ -161,32 +197,6 @@ public class StoryStateService {
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid charactersPresent JSON array: " + value, e);
         }
-    }
-
-    private List<String> addCharacterPresent(List<String> current, String characterId) {
-        List<String> updated = new ArrayList<>(current != null ? current : List.of());
-        if (!updated.contains(characterId)) {
-            updated.add(characterId);
-        }
-        if (!updated.contains("user")) {
-            updated.add("user");
-        }
-        return dedupePreservingOrder(updated);
-    }
-
-    private List<String> removeCharacterPresent(List<String> current, String characterId) {
-        if ("user".equals(characterId)) {
-            throw new IllegalArgumentException("Cannot remove user from charactersPresent");
-        }
-        List<String> updated = new ArrayList<>(current != null ? current : List.of());
-        updated.removeIf(id -> id.equals(characterId));
-        if (updated.isEmpty()) {
-            throw new IllegalArgumentException("charactersPresent cannot be empty");
-        }
-        if (!updated.contains("user")) {
-            updated.add("user");
-        }
-        return dedupePreservingOrder(updated);
     }
 
     private List<String> dedupePreservingOrder(List<String> ids) {

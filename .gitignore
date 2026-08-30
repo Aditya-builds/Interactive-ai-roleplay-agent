@@ -20,3 +20,8 @@ Thumbs.db
 # Runtime data (conversations are generated at runtime)
 data/conversations/*
 !data/conversations/conversation-001.json
+
+# Local QA run artifacts
+qa-checkpoints/
+qa-aurora-*
+run-qa-test.ps1

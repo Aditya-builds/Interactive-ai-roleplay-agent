@@ -50,5 +50,6 @@
       "tags": ["mission", "trust"],
       "relatedCharacterIds": ["user", "aurora"]
     }
-  ]
+  ],
+  "openingMessage": "Aurora looks up from her reports, violet eyes steady. \"You finally came. Sit — we need to talk about the forest.\""
 }

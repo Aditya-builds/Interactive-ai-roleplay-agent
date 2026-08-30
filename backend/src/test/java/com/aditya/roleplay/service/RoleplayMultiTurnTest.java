@@ -132,7 +132,7 @@ class RoleplayMultiTurnTest {
         assertTrue(context.contains("85/100"));
         assertTrue(context.contains("With user: trust 45"));
         assertTrue(context.contains("struck Aurora"));
-        assertEquals(10, afterTurn5.messages().size());
+        assertEquals(11, afterTurn5.messages().size());
     }
 
     @Test
@@ -145,7 +145,7 @@ class RoleplayMultiTurnTest {
                 () -> roleplayService.processTurn(conversation.id(), "Hello"));
 
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();
-        assertEquals(0, saved.messages().size());
+        assertEquals(1, saved.messages().size());
     }
 
     @Test

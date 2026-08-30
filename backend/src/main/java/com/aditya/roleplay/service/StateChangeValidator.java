@@ -1,5 +1,6 @@
 package com.aditya.roleplay.service;
 
+import com.aditya.roleplay.model.Scene;
 import com.aditya.roleplay.model.turn.StateChange;
 import com.aditya.roleplay.model.turn.StateChangeOperation;
 import com.aditya.roleplay.model.turn.StateChangeType;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -21,7 +23,7 @@ public class StateChangeValidator {
             "trust", "respect", "affection", "familiarity", "suspicion");
 
     private static final Set<String> SCENE_FIELDS = Set.of(
-            "location", "time", "currentSituation", "currentConflict",
+            "location", "userLocation", "time", "currentSituation", "currentConflict",
             "charactersPresent", "addCharacter", "removeCharacter");
 
     private static final Set<StateChangeOperation> NUMERIC_OPS = Set.of(
@@ -33,8 +35,11 @@ public class StateChangeValidator {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @ConfigProperty(name = "roleplay.state.max-relationship-delta", defaultValue = "10")
+    @ConfigProperty(name = "roleplay.state.max-relationship-delta", defaultValue = "3")
     int maxRelationshipDelta;
+
+    @ConfigProperty(name = "roleplay.state.max-relationship-total-delta", defaultValue = "6")
+    int maxRelationshipTotalDelta;
 
     @ConfigProperty(name = "roleplay.state.max-health-delta", defaultValue = "50")
     int maxHealthDelta;
@@ -42,23 +47,54 @@ public class StateChangeValidator {
     @ConfigProperty(name = "roleplay.state.max-changes-per-turn", defaultValue = "5")
     int maxChangesPerTurn;
 
-    public ValidationResult validateBatch(java.util.List<StateChange> changes, String conversationCharacterId, Set<String> allowedRelationshipTargets) {
+    public ValidationResult validateBatch(
+            List<StateChange> changes,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets) {
+        return validateBatch(changes, conversationCharacterId, allowedRelationshipTargets, null);
+    }
+
+    public ValidationResult validateBatch(
+            List<StateChange> changes,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets,
+            Scene currentScene) {
         if (changes == null || changes.isEmpty()) {
             return ValidationResult.accepted();
         }
         if (changes.size() > maxChangesPerTurn) {
             return ValidationResult.rejected("Too many state changes in one turn (max " + maxChangesPerTurn + ")");
         }
+
+        int totalRelationshipDelta = 0;
         for (StateChange change : changes) {
-            ValidationResult result = validate(change, conversationCharacterId, allowedRelationshipTargets);
+            ValidationResult result = validate(change, conversationCharacterId, allowedRelationshipTargets, currentScene);
             if (!result.valid()) {
                 return result;
             }
+            if (change.type() == StateChangeType.RELATIONSHIP && change.operation() != StateChangeOperation.SET) {
+                totalRelationshipDelta += parsePositiveMagnitude(change);
+            }
+        }
+        if (totalRelationshipDelta > maxRelationshipTotalDelta) {
+            return ValidationResult.rejected(
+                    "Total relationship delta exceeds max allowed per turn: " + maxRelationshipTotalDelta);
         }
         return ValidationResult.accepted();
     }
 
-    public ValidationResult validate(StateChange change, String conversationCharacterId, Set<String> allowedRelationshipTargets) {
+    public ValidationResult validate(
+            StateChange change,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets) {
+        return validate(change, conversationCharacterId, allowedRelationshipTargets, null);
+    }
+
+    public ValidationResult validate(
+            StateChange change,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets,
+            Scene currentScene) {
         if (change == null) {
             return ValidationResult.rejected("State change is null");
         }
@@ -80,9 +116,9 @@ public class StateChangeValidator {
 
         return switch (change.type()) {
             case RELATIONSHIP -> validateRelationship(change, allowedRelationshipTargets);
-            case SCENE -> validateScene(change);
+            case SCENE -> validateScene(change, currentScene);
             case HEALTH -> validateHealth(change, conversationCharacterId);
-            case LOCATION -> validateLocationAsScene(change, conversationCharacterId);
+            case LOCATION -> validateLocation(change, conversationCharacterId);
             case STATUS -> validateStatus(change, conversationCharacterId);
             case EMOTION -> validateEmotion(change, conversationCharacterId);
         };
@@ -108,7 +144,7 @@ public class StateChangeValidator {
         return ValidationResult.accepted();
     }
 
-    private ValidationResult validateScene(StateChange change) {
+    private ValidationResult validateScene(StateChange change, Scene currentScene) {
         if (!"scene".equals(change.targetId())) {
             return ValidationResult.rejected("Scene changes must use targetId 'scene'");
         }
@@ -118,28 +154,29 @@ public class StateChangeValidator {
         if (change.operation() != StateChangeOperation.SET) {
             return ValidationResult.rejected("Scene changes only support SET");
         }
-        if (change.field().equals("location") && !LOCATION_PATTERN.matcher(change.value()).matches()) {
+        if ((change.field().equals("location") || change.field().equals("userLocation"))
+                && !LOCATION_PATTERN.matcher(change.value()).matches()) {
             return ValidationResult.rejected("Invalid scene location format");
         }
         if (change.field().equals("charactersPresent")) {
-            return validateCharactersPresentValue(change.value());
+            return validateCharactersPresentValue(change.value(), currentScene);
         }
         if (change.field().equals("addCharacter")) {
             return validateCharacterIdValue(change.value());
         }
         if (change.field().equals("removeCharacter")) {
-            if ("user".equals(change.value())) {
-                return ValidationResult.rejected("Cannot remove user from the scene");
-            }
             return validateCharacterIdValue(change.value());
         }
         return ValidationResult.accepted();
     }
 
-    private ValidationResult validateLocationAsScene(StateChange change, String conversationCharacterId) {
-        boolean validTarget = "scene".equals(change.targetId()) || conversationCharacterId.equals(change.targetId());
+    private ValidationResult validateLocation(StateChange change, String conversationCharacterId) {
+        boolean validTarget = "user".equals(change.targetId())
+                || "scene".equals(change.targetId())
+                || conversationCharacterId.equals(change.targetId());
         if (!validTarget) {
-            return ValidationResult.rejected("Location changes must use targetId 'scene' or the conversation character id");
+            return ValidationResult.rejected(
+                    "Location changes must use targetId 'user', 'scene', or the conversation character id");
         }
         if (!"location".equals(change.field())) {
             return ValidationResult.rejected("Location changes only support field 'location'");
@@ -203,15 +240,26 @@ public class StateChangeValidator {
         return ValidationResult.rejected("Invalid character id: " + value);
     }
 
-    private ValidationResult validateCharactersPresentValue(String value) {
+    private ValidationResult validateCharactersPresentValue(String value, Scene currentScene) {
         try {
-            java.util.List<String> ids = objectMapper.readValue(value.trim(), new TypeReference<>() {});
+            List<String> ids = objectMapper.readValue(value.trim(), new TypeReference<>() {});
             if (ids.isEmpty()) {
                 return ValidationResult.rejected("charactersPresent cannot be empty");
             }
             for (String id : ids) {
                 if (!"user".equals(id) && !CHARACTER_ID_PATTERN.matcher(id).matches()) {
                     return ValidationResult.rejected("Invalid character id in charactersPresent: " + id);
+                }
+            }
+            if (currentScene != null) {
+                boolean includesUser = ids.contains("user");
+                if (currentScene.userCoLocated() && !includesUser) {
+                    return ValidationResult.rejected(
+                            "charactersPresent must include user while user is co-located with the NPC");
+                }
+                if (!currentScene.userCoLocated() && includesUser) {
+                    return ValidationResult.rejected(
+                            "charactersPresent cannot include user while user is at a different location");
                 }
             }
             return ValidationResult.accepted();

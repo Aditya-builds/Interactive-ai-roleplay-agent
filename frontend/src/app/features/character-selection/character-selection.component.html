@@ -1,25 +1,23 @@
 <div class="select-page">
   <header class="hero">
-    <div class="hero-badge">Interactive Story</div>
-    <h1>Roleplay Engine</h1>
-    <p>Choose a character to begin your story.</p>
+    <span class="hero-label">AI Roleplay</span>
+    <h1>Choose your story</h1>
+    <p>Select a character to begin a conversation.</p>
   </header>
 
-  @if (error) {
-    <div class="error-banner">{{ error }}</div>
+  @if (loadError && !loading) {
+    <div class="error-panel">
+      <p>Unable to load characters.</p>
+      <button type="button" class="retry-btn" (click)="loadCharacters()">Try Again</button>
+    </div>
   }
 
   @if (loading) {
     <app-loading-spinner label="Loading characters..." />
-  } @else {
+  } @else if (!loadError) {
     <div class="character-grid">
       @for (character of characters; track character.id) {
-        <button
-          type="button"
-          class="character-card"
-          [disabled]="starting"
-          (click)="selectCharacter(character)"
-        >
+        <article class="character-card">
           <div class="card-image">
             @if (character.imageUrl) {
               <img [src]="character.imageUrl" [alt]="character.name" />
@@ -29,15 +27,18 @@
           </div>
           <div class="card-body">
             <h2>{{ character.name }}</h2>
-            <div class="trait-tags">
-              @for (trait of character.personality; track trait) {
-                <span class="tag">{{ trait }}</span>
-              }
-            </div>
+            <p class="personality">{{ personalitySummary(character) }}</p>
             <p class="background">{{ character.background }}</p>
-            <span class="start-label">Start story →</span>
+            <button
+              type="button"
+              class="start-btn"
+              [disabled]="starting"
+              (click)="startConversation(character)"
+            >
+              Start conversation
+            </button>
           </div>
-        </button>
+        </article>
       }
     </div>
   }

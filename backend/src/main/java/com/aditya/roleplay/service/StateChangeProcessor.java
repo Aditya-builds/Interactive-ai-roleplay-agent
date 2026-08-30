@@ -57,7 +57,7 @@ public class StateChangeProcessor {
             Set<String> allowedRelationshipTargets) {
 
         ConversationState current = state.ensureCharacterState(characterDefinition);
-        current = syncLocation(current);
+        current = reconcileNpcLocation(current);
 
         List<Relationship> relationships = new ArrayList<>(current.relationships());
         Scene scene = current.scene();
@@ -74,7 +74,8 @@ public class StateChangeProcessor {
             StateChangeValidator.ValidationResult validation = validator.validate(
                     normalized,
                     current.characterId(),
-                    allowedRelationshipTargets);
+                    allowedRelationshipTargets,
+                    scene);
             if (!validation.valid()) {
                 LOG.fine(() -> "Rejected state change: " + validation.reason());
                 continue;
@@ -98,9 +99,13 @@ public class StateChangeProcessor {
                     applied++;
                 }
                 case LOCATION -> {
-                    scene = storyStateService.applySceneChange(scene, toSceneLocationChange(normalized));
-                    characterState = storyStateService.applyLocationChange(characterState, locationChangeFor(
-                            current.characterId(), normalized.value()));
+                    if ("user".equals(normalized.targetId())) {
+                        scene = storyStateService.applyUserLocationChange(scene, normalized.value());
+                    } else {
+                        scene = storyStateService.applyNpcLocationChange(scene, normalized.value());
+                        characterState = storyStateService.applyLocationChange(characterState, locationChangeFor(
+                                current.characterId(), normalized.value()));
+                    }
                     applied++;
                 }
                 case STATUS -> {
@@ -114,7 +119,7 @@ public class StateChangeProcessor {
             }
         }
 
-        characterState = storyStateService.syncLocationFromScene(characterState, scene);
+        characterState = storyStateService.reconcileCharacterLocation(characterState, scene);
 
         Instant now = Instant.now();
         for (ProposedStoryEvent proposed : turnResult.events()) {
@@ -165,11 +170,12 @@ public class StateChangeProcessor {
                 memories);
     }
 
-    private ConversationState syncLocation(ConversationState state) {
-        CharacterRuntimeState synced = storyStateService.syncLocationFromScene(state.characterState(), state.scene());
+    private ConversationState reconcileNpcLocation(ConversationState state) {
+        CharacterRuntimeState reconciled = storyStateService.reconcileCharacterLocation(
+                state.characterState(), state.scene());
         return new ConversationState(
                 state.characterId(),
-                synced,
+                reconciled,
                 state.scene(),
                 state.relationships(),
                 state.events(),
@@ -187,13 +193,13 @@ public class StateChangeProcessor {
 
     private StateChange normalizeChange(StateChange change, String conversationCharacterId) {
         if (change.type() == StateChangeType.LOCATION) {
-            if ("scene".equals(change.targetId())) {
+            if ("user".equals(change.targetId()) || "scene".equals(change.targetId())) {
                 return change;
             }
             if (conversationCharacterId.equals(change.targetId()) && "location".equals(change.field())) {
                 return change;
             }
-            return toSceneLocationChange(change);
+            return change;
         }
         if (change.type() == StateChangeType.RELATIONSHIP && conversationCharacterId.equals(change.targetId())) {
             return new StateChange(
@@ -204,19 +210,6 @@ public class StateChangeProcessor {
                     change.value());
         }
         return change;
-    }
-
-    private StateChange toSceneLocationChange(StateChange change) {
-        String location = change.value();
-        if ("location".equals(change.field()) && !"scene".equals(change.targetId())) {
-            location = change.value();
-        }
-        return new StateChange(
-                StateChangeType.SCENE,
-                "scene",
-                "location",
-                StateChangeOperation.SET,
-                location);
     }
 
     private boolean hasDuplicateMemory(List<StoryMemoryEntry> memories, String content) {

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class RoleplayServiceTest {
@@ -31,6 +32,17 @@ class RoleplayServiceTest {
     }
 
     @Test
+    void createsConversationWithCharacterOpeningMessage() {
+        Conversation aurora = conversationService.createConversation("aurora");
+        assertEquals(1, aurora.messages().size());
+        assertTrue(aurora.messages().get(0).content().contains("You finally came"));
+
+        Conversation laxus = conversationService.createConversation("laxus");
+        assertEquals(1, laxus.messages().size());
+        assertTrue(laxus.messages().get(0).content().contains("spar"));
+    }
+
+    @Test
     void savesResponseAndRelationshipOnStructuredTurn() {
         TestLlmClient.structuredSuccess = true;
 
@@ -38,8 +50,8 @@ class RoleplayServiceTest {
         roleplayService.processTurn(conversation.id(), "I step closer.");
 
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();
-        assertEquals(2, saved.messages().size());
-        assertEquals("Aurora watches you carefully.", saved.messages().get(1).content());
+        assertEquals(3, saved.messages().size());
+        assertEquals("Aurora watches you carefully.", saved.messages().get(2).content());
         assertEquals(55, saved.userRelationship().familiarity());
     }
 
@@ -52,7 +64,7 @@ class RoleplayServiceTest {
         assertThrows(LlmException.class, () -> roleplayService.processTurn(conversation.id(), "Hello"));
 
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();
-        assertEquals(0, saved.messages().size());
+        assertEquals(1, saved.messages().size());
         assertEquals(54, saved.userRelationship().familiarity());
     }
 }

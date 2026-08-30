@@ -47,7 +47,7 @@ class PromptServiceTest {
                 Instant.now(),
                 Instant.now(),
                 null,
-                new Scene("guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null),
+                new Scene("guild_hall", null, "evening", List.of("aurora", "user"), "Quiet.", null),
                 List.of(),
                 List.of(),
                 List.of(),

@@ -107,6 +107,7 @@ public class RoleplayService {
                 assistantMessage,
                 conversation.id(),
                 updatedState.scene(),
+                updatedState.characterState(),
                 updatedState.relationships());
     }
 
