@@ -3,9 +3,7 @@ package com.aditya.roleplay.service;
 import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.ConversationSummary;
-import com.aditya.roleplay.model.Relationship;
 import com.aditya.roleplay.model.RoleplayCharacter;
-import com.aditya.roleplay.model.Scene;
 import com.aditya.roleplay.model.StoryMemoryEntry;
 import com.aditya.roleplay.storage.JsonStorageService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,8 +42,10 @@ public class ConversationService {
                 character.worldId(),
                 now,
                 now,
+                storyStateService.createInitialCharacterState(character),
                 storyStateService.createInitialScene(character),
                 relationshipService.createInitialRelationship(character.id()),
+                List.of(),
                 defaultMemories(now),
                 List.of());
 
@@ -77,7 +77,8 @@ public class ConversationService {
                 UUID.randomUUID().toString(),
                 "The user protected Aurora during the forest mission.",
                 now.minusSeconds(86400),
-                "manual"));
+                "manual",
+                null));
         return memories;
     }
 }

@@ -6,5 +6,10 @@ public record LlmRequest(
         String systemPrompt,
         List<LlmMessage> messages,
         double temperature,
-        int maxTokens) {
+        int maxTokens,
+        boolean jsonMode) {
+
+    public LlmRequest(String systemPrompt, List<LlmMessage> messages, double temperature, int maxTokens) {
+        this(systemPrompt, messages, temperature, maxTokens, false);
+    }
 }

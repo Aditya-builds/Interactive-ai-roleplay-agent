@@ -1,9 +1,11 @@
 package com.aditya.roleplay.service;
 
+import com.aditya.roleplay.exception.LlmException;
 import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.llm.LlmClient;
 import com.aditya.roleplay.llm.LlmRequest;
 import com.aditya.roleplay.llm.LlmResponse;
+import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
 import com.aditya.roleplay.model.Relationship;
@@ -33,46 +35,63 @@ public class RoleplayService {
     PromptService promptService;
 
     @Inject
-    StoryStateService storyStateService;
+    StateChangeProcessor stateChangeProcessor;
 
     @Inject
-    RelationshipService relationshipService;
+    StoryStateService storyStateService;
 
     @Inject
     LlmClient llmClient;
 
     public SendMessageResponse processTurn(String conversationId, String content) {
         validateContent(content);
+        String trimmed = content.trim();
 
         Conversation conversation = conversationService.getConversation(conversationId);
         RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
         World world = characterService.requireWorld(conversation.worldId());
+        conversation = ensureRuntimeFields(conversation, character);
+
+        LlmRequest llmRequest = promptService.build(character, world, conversation, trimmed);
+        LlmResponse llmResponse = llmClient.complete(llmRequest);
+
+        if (!llmResponse.structuredParseSuccess() || llmResponse.turnResult() == null) {
+            throw new LlmException("LLM returned invalid structured output. Turn was not saved.");
+        }
+
+        LlmTurnResult turnResult = llmResponse.turnResult();
 
         Message userMessage = new Message(
                 UUID.randomUUID().toString(),
                 Role.USER,
-                content.trim(),
+                trimmed,
                 Instant.now());
 
-        conversation = conversation.appendMessage(userMessage);
-
-        LlmRequest llmRequest = promptService.build(character, world, conversation, content.trim());
-        LlmResponse llmResponse = llmClient.complete(llmRequest);
+        StateChangeProcessor.ConversationState updatedState = stateChangeProcessor.apply(
+                new StateChangeProcessor.ConversationState(
+                        conversation.characterId(),
+                        conversation.characterState(),
+                        conversation.scene(),
+                        conversation.relationship(),
+                        conversation.events(),
+                        conversation.memories()),
+                character,
+                turnResult);
 
         Message assistantMessage = new Message(
                 UUID.randomUUID().toString(),
                 Role.ASSISTANT,
-                llmResponse.content().trim(),
+                turnResult.response().trim(),
                 Instant.now());
 
-        conversation = conversation.appendMessage(assistantMessage);
-
-        Scene updatedScene = storyStateService.applyPostTurnUpdates(conversation.scene(), content);
-        Relationship updatedRelationship = relationshipService.applyPostTurnUpdates(conversation.relationship(), content);
-
         conversation = conversation
-                .withScene(updatedScene)
-                .withRelationship(updatedRelationship)
+                .appendMessage(userMessage)
+                .appendMessage(assistantMessage)
+                .withCharacterState(updatedState.characterState())
+                .withScene(updatedState.scene())
+                .withRelationship(updatedState.relationship())
+                .withEvents(updatedState.events())
+                .withMemories(updatedState.memories())
                 .withUpdatedAt(Instant.now());
 
         conversationService.save(conversation);
@@ -80,8 +99,23 @@ public class RoleplayService {
         return new SendMessageResponse(
                 assistantMessage,
                 conversation.id(),
-                updatedScene,
-                updatedRelationship);
+                updatedState.scene(),
+                updatedState.relationship());
+    }
+
+    private Conversation ensureRuntimeFields(Conversation conversation, RoleplayCharacter character) {
+        if (conversation.characterState() != null
+                && conversation.events() != null
+                && conversation.memories() != null) {
+            return conversation;
+        }
+
+        return conversation
+                .withCharacterState(conversation.characterState() != null
+                        ? conversation.characterState()
+                        : storyStateService.createInitialCharacterState(character))
+                .withEvents(conversation.events() != null ? conversation.events() : java.util.List.of())
+                .withMemories(conversation.memories() != null ? conversation.memories() : java.util.List.of());
     }
 
     private void validateContent(String content) {

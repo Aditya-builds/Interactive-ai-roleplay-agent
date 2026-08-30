@@ -6,5 +6,6 @@ public record StoryMemoryEntry(
         String id,
         String content,
         Instant createdAt,
-        String source) {
+        String source,
+        Double importance) {
 }

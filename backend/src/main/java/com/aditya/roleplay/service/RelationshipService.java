@@ -1,6 +1,8 @@
 package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.model.Relationship;
+import com.aditya.roleplay.model.turn.StateChange;
+import com.aditya.roleplay.model.turn.StateChangeOperation;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -10,42 +12,43 @@ public class RelationshipService {
         return new Relationship(characterId, 42, 67, 12, 54, 8);
     }
 
-    public Relationship applyPostTurnUpdates(Relationship relationship, String userMessage) {
-        int trust = relationship.trust();
-        int respect = relationship.respect();
-        int affection = relationship.affection();
-        int familiarity = relationship.familiarity() + 1;
-        int suspicion = relationship.suspicion();
+    public Relationship applyStateChange(Relationship relationship, StateChange change) {
+        int parsed = Integer.parseInt(change.value().trim());
+        int updated = switch (change.field()) {
+            case "trust" -> applyOperation(relationship.trust(), change.operation(), parsed);
+            case "respect" -> applyOperation(relationship.respect(), change.operation(), parsed);
+            case "affection" -> applyOperation(relationship.affection(), change.operation(), parsed);
+            case "familiarity" -> applyOperation(relationship.familiarity(), change.operation(), parsed);
+            case "suspicion" -> applyOperation(relationship.suspicion(), change.operation(), parsed);
+            default -> throw new IllegalArgumentException("Unsupported relationship field: " + change.field());
+        };
 
-        String lower = userMessage.toLowerCase();
-        if (containsAny(lower, "help", "protect", "save", "defend")) {
-            trust += 2;
-            respect += 1;
-        }
-        if (containsAny(lower, "thank", "grateful", "appreciate")) {
-            affection += 1;
-            respect += 1;
-        }
-        if (containsAny(lower, "lie", "betray", "deceive", "steal")) {
-            trust -= 3;
-            suspicion += 2;
-        }
-
-        return new Relationship(
-                relationship.characterId(),
-                trust,
-                respect,
-                affection,
-                familiarity,
-                suspicion).clamped();
+        return switch (change.field()) {
+            case "trust" -> new Relationship(
+                    relationship.characterId(), updated, relationship.respect(),
+                    relationship.affection(), relationship.familiarity(), relationship.suspicion()).clamped();
+            case "respect" -> new Relationship(
+                    relationship.characterId(), relationship.trust(), updated,
+                    relationship.affection(), relationship.familiarity(), relationship.suspicion()).clamped();
+            case "affection" -> new Relationship(
+                    relationship.characterId(), relationship.trust(), relationship.respect(),
+                    updated, relationship.familiarity(), relationship.suspicion()).clamped();
+            case "familiarity" -> new Relationship(
+                    relationship.characterId(), relationship.trust(), relationship.respect(),
+                    relationship.affection(), updated, relationship.suspicion()).clamped();
+            case "suspicion" -> new Relationship(
+                    relationship.characterId(), relationship.trust(), relationship.respect(),
+                    relationship.affection(), relationship.familiarity(), updated).clamped();
+            default -> relationship;
+        };
     }
 
-    private boolean containsAny(String text, String... keywords) {
-        for (String keyword : keywords) {
-            if (text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
+    private int applyOperation(int current, StateChangeOperation operation, int value) {
+        return switch (operation) {
+            case INCREASE -> current + value;
+            case DECREASE -> current - value;
+            case SET -> value;
+            default -> current;
+        };
     }
 }
