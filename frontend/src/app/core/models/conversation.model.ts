@@ -15,8 +15,15 @@ export interface Scene {
   currentConflict: string | null;
 }
 
-export interface Relationship {
+export interface CharacterRuntimeState {
   characterId: string;
+  health: { current: number; max: number };
+  status: string | null;
+  emotion: string | null;
+}
+
+export interface Relationship {
+  targetId: string;
   trust: number;
   respect: number;
   affection: number;
@@ -29,6 +36,9 @@ export interface StoryMemoryEntry {
   content: string;
   createdAt: string;
   source: string;
+  importance?: number;
+  tags?: string[];
+  relatedCharacterIds?: string[];
 }
 
 export interface Conversation {
@@ -37,8 +47,9 @@ export interface Conversation {
   worldId: string;
   createdAt: string;
   updatedAt: string;
+  characterState?: CharacterRuntimeState;
   scene: Scene;
-  relationship: Relationship;
+  relationships: Relationship[];
   memories: StoryMemoryEntry[];
   messages: Message[];
 }
@@ -47,10 +58,20 @@ export interface SendMessageResponse {
   message: Message;
   conversationId: string;
   scene: Scene;
-  relationship: Relationship;
+  relationships: Relationship[];
 }
 
 export interface ApiError {
   error: string;
   code: string;
+}
+
+export function formatLocationSlug(slug: string): string {
+  if (!slug || slug === 'unknown') {
+    return 'Unknown';
+  }
+  return slug
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }

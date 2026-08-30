@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { ConversationApiService } from '../../core/services/conversation-api.service';
 import { CharacterApiService } from '../../core/services/character-api.service';
-import { Message } from '../../core/models/conversation.model';
+import { formatLocationSlug, Message, Scene } from '../../core/models/conversation.model';
 import { MessageListComponent } from './components/message-list/message-list.component';
 import { MessageInputComponent } from './components/message-input/message-input.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
@@ -25,6 +25,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   characterName = '';
   characterImageUrl = '';
   worldName = '';
+  sceneLocation = '';
+  scene: Scene | null = null;
   messages: Message[] = [];
   loading = true;
   sending = false;
@@ -59,6 +61,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       next: (conversation) => {
         this.messages = conversation.messages;
         this.characterId = conversation.characterId;
+        this.updateScene(conversation.scene);
         this.loading = false;
         this.loadCharacterInfo(conversation.characterId);
         this.scrollToBottom();
@@ -127,6 +130,7 @@ export class ChatComponent implements OnInit, OnDestroy {
           { ...optimisticUserMessage, id: `user-${Date.now()}` },
           response.message
         ];
+        this.updateScene(response.scene);
         this.sending = false;
         this.scrollToBottom();
       },
@@ -136,6 +140,11 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.error = err.error?.error ?? 'Failed to send message. Please try again.';
       }
     });
+  }
+
+  private updateScene(scene: Scene): void {
+    this.scene = scene;
+    this.sceneLocation = formatLocationSlug(scene.location);
   }
 
   private scrollToBottom(): void {

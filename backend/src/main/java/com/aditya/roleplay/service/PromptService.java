@@ -2,25 +2,25 @@ package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.llm.LlmMessage;
 import com.aditya.roleplay.llm.LlmRequest;
-import com.aditya.roleplay.model.CharacterHealth;
-import com.aditya.roleplay.model.CharacterRuntimeState;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
-import com.aditya.roleplay.model.Relationship;
 import com.aditya.roleplay.model.Role;
 import com.aditya.roleplay.model.RoleplayCharacter;
-import com.aditya.roleplay.model.Scene;
-import com.aditya.roleplay.model.StoryMemoryEntry;
 import com.aditya.roleplay.model.World;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class PromptService {
+
+    @Inject
+    PromptContextService promptContextService;
 
     @ConfigProperty(name = "roleplay.llm.temperature")
     double temperature;
@@ -38,16 +38,17 @@ public class PromptService {
             RoleplayCharacter character,
             World world,
             Conversation conversation,
-            String latestUserMessage) {
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets) {
 
-        String systemPrompt = buildSystemPrompt(character, world);
+        String systemPrompt = buildSystemPrompt(character, world, allowedRelationshipTargets);
         List<Message> recentMessages = selectRecentMessages(conversation.messages());
-        List<LlmMessage> chatMessages = buildChatMessages(recentMessages, character.name(), latestUserMessage, conversation);
+        List<LlmMessage> chatMessages = buildChatMessages(recentMessages, latestUserMessage, conversation, allowedRelationshipTargets);
 
         return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode);
     }
 
-    private String buildSystemPrompt(RoleplayCharacter character, World world) {
+    private String buildSystemPrompt(RoleplayCharacter character, World world, Set<String> allowedRelationshipTargets) {
         String personality = String.join(", ", character.personality());
         String values = character.values().stream()
                 .map(v -> "- " + v)
@@ -55,6 +56,9 @@ public class PromptService {
         String rules = world.rules().stream()
                 .map(r -> "- " + r)
                 .collect(Collectors.joining("\n"));
+        String relationshipTargets = allowedRelationshipTargets.stream()
+                .sorted()
+                .collect(Collectors.joining(", "));
 
         return """
                 You are %s, a fictional character in a roleplay story.
@@ -77,7 +81,7 @@ public class PromptService {
                 2. You control ONLY %s, NPCs, and the environment.
                 3. NEVER control the user's character: do not describe what the user does, thinks, feels, or says unless they explicitly wrote it.
                 4. Do not write the user's dialogue or internal monologue.
-                5. Maintain continuity with the scene, memories, and recent conversation.
+                5. Maintain continuity with the scene, memories, events, and recent conversation.
                 6. Do not invent contradictory facts about the character or world.
                 7. Do not force romantic progression; let relationships develop naturally.
                 8. Only propose state changes justified by the current interaction.
@@ -92,7 +96,7 @@ public class PromptService {
                   "stateChanges": [
                     {
                       "type": "RELATIONSHIP | SCENE | HEALTH | LOCATION | STATUS | EMOTION",
-                      "targetId": "character id (e.g. %s) or 'scene' for scene changes",
+                      "targetId": "relationship partner id (%s) OR 'scene' OR '%s' for character state",
                       "field": "field name",
                       "operation": "SET | INCREASE | DECREASE",
                       "value": "string value or numeric amount as string"
@@ -108,18 +112,20 @@ public class PromptService {
                   "memories": [
                     {
                       "content": "Important fact worth remembering",
-                      "importance": 0.0
+                      "importance": 0.0,
+                      "tags": ["optional"],
+                      "relatedCharacterIds": ["user"]
                     }
                   ]
                 }
 
                 STATE CHANGE RULES
-                - RELATIONSHIP targetId must be %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE with small values (1-5) or SET (0-100).
-                - SCENE targetId must be "scene". Fields: location, time, currentSituation, currentConflict. Use SET only. Location must be lowercase slug (e.g. guild_hall, forest).
-                - HEALTH targetId must be %s. Field: current. Use INCREASE/DECREASE/SET. Do not change max health.
-                - LOCATION targetId must be %s. Field: location. Use SET only.
-                - STATUS targetId must be %s. Field: status. Use SET only (e.g. injured, exhausted, or null).
-                - EMOTION targetId must be %s. Field: emotion. Use SET only.
+                - RELATIONSHIP targetId is who %s has feelings toward: %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE (1-5) or SET (0-100).
+                - SCENE targetId must be "scene". Fields: location, time, currentSituation, currentConflict, charactersPresent. Use SET only. Location slugs: guild_hall, forest, training_ground, etc. charactersPresent value is a JSON array string, e.g. ["%s","user"].
+                - HEALTH targetId must be %s. Field: current. Use INCREASE/DECREASE/SET for damage or healing.
+                - LOCATION is shorthand for moving the scene; use targetId "scene", field "location", SET only.
+                - STATUS targetId must be %s. Field: status. SET only (injured, exhausted, or null).
+                - EMOTION targetId must be %s. Field: emotion. SET only (angry, calm, etc.).
                 - Propose at most 5 stateChanges per turn.
                 - Use empty arrays when nothing applies.
                 """.formatted(
@@ -133,7 +139,10 @@ public class PromptService {
                 world.description(),
                 rules,
                 character.name(),
+                relationshipTargets,
                 character.id(),
+                character.id(),
+                relationshipTargets,
                 character.id(),
                 character.id(),
                 character.id(),
@@ -150,87 +159,22 @@ public class PromptService {
 
     private List<LlmMessage> buildChatMessages(
             List<Message> recentMessages,
-            String characterName,
             String latestUserMessage,
-            Conversation conversation) {
+            Conversation conversation,
+            Set<String> allowedRelationshipTargets) {
 
         List<LlmMessage> result = new ArrayList<>();
 
-        int start = Math.max(0, recentMessages.size() - 12);
-        for (Message message : recentMessages.subList(start, recentMessages.size())) {
+        for (Message message : recentMessages) {
+            if (message.role() == Role.USER && message.content().equals(latestUserMessage)) {
+                continue;
+            }
             result.add(new LlmMessage(message.role().getValue(), message.content()));
         }
 
-        result.add(new LlmMessage("user", buildContextBlock(conversation, characterName, latestUserMessage)));
+        result.add(new LlmMessage(
+                "user",
+                promptContextService.buildTurnContext(conversation, latestUserMessage, allowedRelationshipTargets)));
         return result;
-    }
-
-    private String buildContextBlock(Conversation conversation, String characterName, String latestUserMessage) {
-        Scene scene = conversation.scene();
-        Relationship rel = conversation.relationship();
-        CharacterRuntimeState runtime = conversation.characterState();
-        CharacterHealth health = runtime != null && runtime.health() != null
-                ? runtime.health()
-                : new CharacterHealth(100, 100);
-
-        String present = String.join(", ", scene.charactersPresent());
-        String conflict = scene.currentConflict() != null ? scene.currentConflict() : "none";
-        String memories = conversation.memories().stream()
-                .limit(10)
-                .map(StoryMemoryEntry::content)
-                .map(m -> "- " + m)
-                .collect(Collectors.joining("\n"));
-
-        if (memories.isBlank()) {
-            memories = "- (none yet)";
-        }
-
-        String runtimeLocation = runtime != null ? runtime.location() : scene.location();
-        String status = runtime != null && runtime.status() != null ? runtime.status() : "none";
-        String emotion = runtime != null && runtime.emotion() != null ? runtime.emotion() : "none";
-
-        return """
-                CURRENT SCENE
-                Location: %s
-                Time: %s
-                Present: %s
-                Situation: %s
-                Conflict: %s
-
-                CHARACTER RUNTIME STATE
-                Health: %d/%d
-                Location: %s
-                Status: %s
-                Emotion: %s
-
-                RELATIONSHIP WITH USER
-                Trust: %d/100, Respect: %d/100, Affection: %d/100, Familiarity: %d/100, Suspicion: %d/100
-                (Use these as internal guidance for tone; do not recite numbers to the user.)
-
-                IMPORTANT MEMORIES
-                %s
-
-                USER MESSAGE
-                %s
-
-                Return the structured JSON turn result now. Narrative goes in "response" only.
-                """.formatted(
-                scene.location(),
-                scene.time(),
-                present,
-                scene.currentSituation(),
-                conflict,
-                health.current(),
-                health.max(),
-                runtimeLocation,
-                status,
-                emotion,
-                rel.trust(),
-                rel.respect(),
-                rel.affection(),
-                rel.familiarity(),
-                rel.suspicion(),
-                memories,
-                latestUserMessage);
     }
 }

@@ -10,6 +10,7 @@ import com.aditya.roleplay.model.StoryMemoryEntry;
 import com.aditya.roleplay.model.turn.ProposedMemory;
 import com.aditya.roleplay.model.turn.ProposedStoryEvent;
 import com.aditya.roleplay.model.turn.StateChange;
+import com.aditya.roleplay.model.turn.StateChangeOperation;
 import com.aditya.roleplay.model.turn.StateChangeType;
 import com.aditya.roleplay.llm.LlmTurnResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,6 +20,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -45,41 +47,63 @@ public class StateChangeProcessor {
     @ConfigProperty(name = "roleplay.events.max-count", defaultValue = "50")
     int maxEvents;
 
+    @ConfigProperty(name = "roleplay.state.max-changes-per-turn", defaultValue = "5")
+    int maxChangesPerTurn;
+
     public ConversationState apply(
             ConversationState state,
             RoleplayCharacter characterDefinition,
-            LlmTurnResult turnResult) {
+            LlmTurnResult turnResult,
+            Set<String> allowedRelationshipTargets) {
 
         ConversationState current = state.ensureCharacterState(characterDefinition);
 
-        Relationship relationship = current.relationship();
+        List<Relationship> relationships = new ArrayList<>(current.relationships());
         Scene scene = current.scene();
         CharacterRuntimeState characterState = current.characterState();
         List<StoryEvent> events = new ArrayList<>(current.events());
         List<StoryMemoryEntry> memories = new ArrayList<>(current.memories());
 
+        int applied = 0;
         for (StateChange change : turnResult.stateChanges()) {
-            StateChangeValidator.ValidationResult validation = validator.validate(change, current.characterId());
+            if (applied >= maxChangesPerTurn) {
+                break;
+            }
+            StateChange normalized = normalizeChange(change, current.characterId());
+            StateChangeValidator.ValidationResult validation = validator.validate(
+                    normalized,
+                    current.characterId(),
+                    allowedRelationshipTargets);
             if (!validation.valid()) {
                 LOG.fine(() -> "Rejected state change: " + validation.reason());
                 continue;
             }
 
-            switch (change.type()) {
-                case RELATIONSHIP -> relationship = relationshipService.applyStateChange(relationship, change);
-                case SCENE -> scene = storyStateService.applySceneChange(scene, change);
-                case HEALTH -> characterState = storyStateService.applyHealthChange(characterState, change);
-                case LOCATION -> {
-                    characterState = storyStateService.applyLocationChange(characterState, change);
-                    scene = storyStateService.applySceneChange(scene, new StateChange(
-                            StateChangeType.SCENE,
-                            "scene",
-                            "location",
-                            change.operation(),
-                            change.value()));
+            switch (normalized.type()) {
+                case RELATIONSHIP -> {
+                    relationships = relationshipService.applyStateChange(relationships, normalized);
+                    applied++;
                 }
-                case STATUS -> characterState = storyStateService.applyStatusChange(characterState, change);
-                case EMOTION -> characterState = storyStateService.applyEmotionChange(characterState, change);
+                case SCENE -> {
+                    scene = storyStateService.applySceneChange(scene, normalized);
+                    applied++;
+                }
+                case HEALTH -> {
+                    characterState = storyStateService.applyHealthChange(characterState, normalized);
+                    applied++;
+                }
+                case LOCATION -> {
+                    scene = storyStateService.applySceneChange(scene, toSceneLocationChange(normalized));
+                    applied++;
+                }
+                case STATUS -> {
+                    characterState = storyStateService.applyStatusChange(characterState, normalized);
+                    applied++;
+                }
+                case EMOTION -> {
+                    characterState = storyStateService.applyEmotionChange(characterState, normalized);
+                    applied++;
+                }
             }
         }
 
@@ -112,30 +136,67 @@ public class StateChangeProcessor {
                     proposed.content().trim(),
                     now,
                     "llm",
-                    importance));
+                    importance,
+                    proposed.tags(),
+                    proposed.relatedCharacterIds()));
         }
         if (memories.size() > maxMemories) {
-            memories = new ArrayList<>(memories.subList(memories.size() - maxMemories, memories.size()));
+            memories = trimMemories(memories, maxMemories);
         }
 
         return new ConversationState(
                 current.characterId(),
                 characterState,
                 scene,
-                relationship,
+                relationships,
                 events,
                 memories);
+    }
+
+    private StateChange normalizeChange(StateChange change, String conversationCharacterId) {
+        if (change.type() == StateChangeType.LOCATION) {
+            return toSceneLocationChange(change);
+        }
+        if (change.type() == StateChangeType.RELATIONSHIP && conversationCharacterId.equals(change.targetId())) {
+            return new StateChange(
+                    change.type(),
+                    "user",
+                    change.field(),
+                    change.operation(),
+                    change.value());
+        }
+        return change;
+    }
+
+    private StateChange toSceneLocationChange(StateChange change) {
+        return new StateChange(
+                StateChangeType.SCENE,
+                "scene",
+                "location",
+                StateChangeOperation.SET,
+                change.value());
+    }
+
+    private List<StoryMemoryEntry> trimMemories(List<StoryMemoryEntry> memories, int max) {
+        List<StoryMemoryEntry> sorted = new ArrayList<>(memories);
+        sorted.sort((a, b) -> Double.compare(
+                b.importance() != null ? b.importance() : 0.0,
+                a.importance() != null ? a.importance() : 0.0));
+        List<StoryMemoryEntry> kept = new ArrayList<>(sorted.subList(0, Math.min(max, sorted.size())));
+        kept.sort((a, b) -> a.createdAt().compareTo(b.createdAt()));
+        return kept;
     }
 
     public record ConversationState(
             String characterId,
             CharacterRuntimeState characterState,
             Scene scene,
-            Relationship relationship,
+            List<Relationship> relationships,
             List<StoryEvent> events,
             List<StoryMemoryEntry> memories) {
 
         public ConversationState {
+            relationships = relationships != null ? List.copyOf(relationships) : List.of();
             events = events != null ? List.copyOf(events) : List.of();
             memories = memories != null ? List.copyOf(memories) : List.of();
         }
@@ -144,17 +205,14 @@ public class StateChangeProcessor {
             if (characterState != null) {
                 return this;
             }
-            String location = character.presence() != null
-                    ? character.presence().defaultLocation()
-                    : "unknown";
             CharacterHealth health = character.health() != null
                     ? character.health()
                     : new CharacterHealth(100, 100);
             return new ConversationState(
                     characterId,
-                    new CharacterRuntimeState(character.id(), health, location, null, null),
+                    new CharacterRuntimeState(character.id(), health, null, null),
                     scene,
-                    relationship,
+                    relationships,
                     events,
                     memories);
         }

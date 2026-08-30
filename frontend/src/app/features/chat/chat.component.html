@@ -29,22 +29,31 @@
   <div class="messages" #scrollContainer>
     @if (loading) {
       <app-loading-spinner label="Loading conversation..." />
-    } @else if (messages.length === 0) {
-      <div class="empty-state">
-        @if (characterImageUrl) {
-          <img [src]="characterImageUrl" [alt]="characterName" class="empty-avatar" />
-        }
-        <h2>Begin your story with {{ characterName }}</h2>
-        <p>Type an action or dialogue below to start the scene.</p>
-      </div>
     } @else {
-      <app-message-list
-        [messages]="messages"
-        [characterName]="characterName"
-        [characterImageUrl]="characterImageUrl"
-      />
-      @if (sending) {
-        <app-loading-spinner label="Waiting for response..." [inline]="true" />
+      @if (sceneLocation) {
+        <div class="scene-banner">
+          <span class="scene-label">Current scene</span>
+          <span class="scene-name">{{ sceneLocation }}</span>
+        </div>
+      }
+
+      @if (messages.length === 0) {
+        <div class="empty-state">
+          @if (characterImageUrl) {
+            <img [src]="characterImageUrl" [alt]="characterName" class="empty-avatar" />
+          }
+          <h2>Begin your story with {{ characterName }}</h2>
+          <p>Type an action or dialogue below to start the scene.</p>
+        </div>
+      } @else {
+        <app-message-list
+          [messages]="messages"
+          [characterName]="characterName"
+          [characterImageUrl]="characterImageUrl"
+        />
+        @if (sending) {
+          <app-loading-spinner label="Waiting for response..." [inline]="true" />
+        }
       }
     }
   </div>

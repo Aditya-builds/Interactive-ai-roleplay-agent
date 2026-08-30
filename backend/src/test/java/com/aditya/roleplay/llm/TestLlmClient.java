@@ -28,7 +28,7 @@ public class TestLlmClient implements LlmClient {
                         "Aurora watches you carefully.",
                         List.of(new StateChange(
                                 StateChangeType.RELATIONSHIP,
-                                "aurora",
+                                "user",
                                 "familiarity",
                                 StateChangeOperation.INCREASE,
                                 "1")),

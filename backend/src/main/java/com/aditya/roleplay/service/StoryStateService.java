@@ -3,17 +3,20 @@ package com.aditya.roleplay.service;
 import com.aditya.roleplay.model.CharacterHealth;
 import com.aditya.roleplay.model.CharacterPresence;
 import com.aditya.roleplay.model.CharacterRuntimeState;
-import com.aditya.roleplay.model.Relationship;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.Scene;
 import com.aditya.roleplay.model.turn.StateChange;
 import com.aditya.roleplay.model.turn.StateChangeOperation;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
 @ApplicationScoped
 public class StoryStateService {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public Scene createInitialScene(RoleplayCharacter character) {
         CharacterPresence presence = character.presence();
@@ -38,10 +41,7 @@ public class StoryStateService {
         CharacterHealth health = character.health() != null
                 ? character.health()
                 : new CharacterHealth(100, 100);
-        String location = character.presence() != null
-                ? character.presence().defaultLocation()
-                : "unknown";
-        return new CharacterRuntimeState(character.id(), health, location, null, null);
+        return new CharacterRuntimeState(character.id(), health, null, null);
     }
 
     public Scene applySceneChange(Scene scene, StateChange change) {
@@ -70,6 +70,12 @@ public class StoryStateService {
                     scene.charactersPresent(),
                     scene.currentSituation(),
                     "null".equalsIgnoreCase(change.value()) ? null : change.value());
+            case "charactersPresent" -> new Scene(
+                    scene.location(),
+                    scene.time(),
+                    parseCharactersPresent(change.value()),
+                    scene.currentSituation(),
+                    scene.currentConflict());
             default -> scene;
         };
     }
@@ -81,16 +87,6 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 new CharacterHealth(current, max),
-                state.location(),
-                state.status(),
-                state.emotion());
-    }
-
-    public CharacterRuntimeState applyLocationChange(CharacterRuntimeState state, StateChange change) {
-        return new CharacterRuntimeState(
-                state.characterId(),
-                state.health(),
-                change.value(),
                 state.status(),
                 state.emotion());
     }
@@ -100,7 +96,6 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 state.health(),
-                state.location(),
                 status,
                 state.emotion());
     }
@@ -110,9 +105,20 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 state.health(),
-                state.location(),
                 state.status(),
                 emotion);
+    }
+
+    private List<String> parseCharactersPresent(String value) {
+        try {
+            List<String> parsed = objectMapper.readValue(value.trim(), new TypeReference<>() {});
+            if (parsed.isEmpty()) {
+                throw new IllegalArgumentException("charactersPresent cannot be empty");
+            }
+            return List.copyOf(parsed);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid charactersPresent JSON array: " + value, e);
+        }
     }
 
     private int applyNumericValue(int current, StateChange change, int max) {

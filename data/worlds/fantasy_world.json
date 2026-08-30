@@ -1,0 +1,39 @@
+{
+  "id": "fantasy_world",
+  "name": "Fantasy World",
+  "description": "A world of magic, guilds, and rival factions where power is earned through skill and cunning.",
+  "rules": [
+    "Magic exists and is regulated by guild charters.",
+    "Guilds hold political power in major cities.",
+    "Factions compete for influence through missions, trade, and covert operations.",
+    "Characters can be injured; recovery takes time and care.",
+    "Death is possible in high-stakes encounters."
+  ],
+  "locations": [
+    {
+      "id": "guild_hall",
+      "name": "Guild Hall",
+      "description": "The central hall of the adventurers' guild — busy by day, subdued by evening. Mission boards, a bar, and private briefing rooms line the main floor."
+    },
+    {
+      "id": "training_ground",
+      "name": "Training Ground",
+      "description": "An open yard behind the guild hall where mages and fighters spar. Lightning scars mark the stones where Laxus trains."
+    },
+    {
+      "id": "forest",
+      "name": "Whispering Forest",
+      "description": "A dense, mist-laced forest on the guild's eastern border. Recent reports describe ice-mage activity along the northern trail."
+    },
+    {
+      "id": "forest_clearing",
+      "name": "Forest Clearing",
+      "description": "A narrow clearing deep in the Whispering Forest where ambushes are common and visibility opens just enough to fight."
+    },
+    {
+      "id": "guild_infirmary",
+      "name": "Guild Infirmary",
+      "description": "A quiet wing of the guild hall staffed by healers. Wounded operatives recover here after missions."
+    }
+  ]
+}

@@ -1,49 +1,47 @@
-# Data folder
+# Data directory
 
-Local JSON storage for the roleplay engine.
+This folder holds all JSON for the roleplay engine.
+
+## Canonical model (target)
+
+See **[docs/JSON_MODEL.md](docs/JSON_MODEL.md)** for the full architecture.
 
 ```
 data/
-├── characters.json       # list of all characters (id, name, worldId, imageUrl)
-├── worlds.json           # list of all world ids
-├── aurora/               # one folder per character
-│   ├── aurora.json       # health, background, values, personality, presence
-│   └── images/
-│       └── aurora.png
-├── laxus/
-│   ├── laxus.json
-│   └── images/
-├── fantasy/              # one folder per world
-│   └── fantasy.json
-└── conversations/        # runtime story sessions (generated)
+├── docs/JSON_MODEL.md       ← design spec (read this first)
+├── characters.json          ← index
+├── worlds.json              ← index
+├── characters/              ← DEFINITIONS: who exists
+├── worlds/                  ← DEFINITIONS: world + location catalog
+└── conversations/           ← RUNTIME: one file per story session
+    └── conversation-001.json  ← reference example (20 messages)
 ```
 
-## Adding a character
+## Three layers
 
-1. Create folder `data/{id}/`
-2. Add profile file `data/{id}/{id}.json` with health, background, values, etc.
-3. Add portrait to `data/{id}/images/{id}.png`
-4. Copy portrait to `frontend/public/characters/{id}.png` for the UI
-5. Add an entry to `data/characters.json`
+| Layer | Location | Example |
+|-------|----------|---------|
+| Definitions | `characters/`, `worlds/` | Aurora's personality, guild_hall description |
+| World state | inside `conversations/` | Aurora HP 72, current scene, relationships |
+| History | inside `conversations/` | events, memories, messages |
 
-## Character profile fields (`{id}/{id}.json`)
+## Reference conversation
 
-| Field | Description |
-|-------|-------------|
-| `health` | `{ "current": 100, "max": 100 }` |
-| `background` | Backstory |
-| `values` | Core values |
-| `personality` | Personality traits |
-| `speakingStyle` | How they talk |
-| `presence` | Default location, time, and situation |
+**[conversations/conversation-001.json](conversations/conversation-001.json)** is a complete 10-exchange story showing:
 
-## characters.json entry
+- Scene progression: guild_hall → forest → forest_clearing → guild_hall
+- Character state evolution: Aurora 100→72 HP, injured, determined
+- Relationship changes: Aurora↔User trust 42→58
+- Multi-character dialogue: Aurora and Laxus with `characterId` on assistant messages
+- Events vs memories distinction
+- Location ids validated against `worlds/fantasy_world.json`
 
-```json
-{
-  "id": "aurora",
-  "name": "Aurora",
-  "worldId": "fantasy",
-  "imageUrl": "/characters/aurora.png"
-}
-```
+## Legacy layout (still used by running Java code)
+
+Until Java is migrated, the backend still reads:
+
+- `aurora/aurora.json`, `laxus/laxus.json`
+- `fantasy/fantasy.json`
+- `worldId: "fantasy"` (not `fantasy_world`)
+
+Do not delete legacy files until migration is complete.

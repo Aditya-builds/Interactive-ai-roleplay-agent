@@ -7,6 +7,7 @@ import com.aditya.roleplay.model.ConversationSummary;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.World;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.PostConstruct;
@@ -99,7 +100,9 @@ public class JsonStorageService {
             return Optional.empty();
         }
         try {
-            return Optional.of(objectMapper.readValue(file.toFile(), Conversation.class));
+            JsonNode root = objectMapper.readTree(file.toFile());
+            JsonNode migrated = ConversationJsonMigration.migrate(objectMapper, root);
+            return Optional.of(objectMapper.treeToValue(migrated, Conversation.class));
         } catch (IOException e) {
             throw new RoleplayException("Failed to load conversation: " + id, "STORAGE_ERROR", 500);
         }
@@ -131,7 +134,9 @@ public class JsonStorageService {
             files.filter(p -> p.toString().endsWith(".json"))
                     .forEach(path -> {
                         try {
-                            Conversation conversation = objectMapper.readValue(path.toFile(), Conversation.class);
+                            JsonNode root = objectMapper.readTree(path.toFile());
+                            JsonNode migrated = ConversationJsonMigration.migrate(objectMapper, root);
+                            Conversation conversation = objectMapper.treeToValue(migrated, Conversation.class);
                             summaries.add(new ConversationSummary(
                                     conversation.id(),
                                     conversation.characterId(),

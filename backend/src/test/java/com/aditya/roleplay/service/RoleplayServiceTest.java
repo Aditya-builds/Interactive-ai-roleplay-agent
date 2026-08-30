@@ -33,7 +33,7 @@ class RoleplayServiceTest {
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();
         assertEquals(2, saved.messages().size());
         assertEquals("Aurora watches you carefully.", saved.messages().get(1).content());
-        assertEquals(55, saved.relationship().familiarity());
+        assertEquals(55, saved.userRelationship().familiarity());
     }
 
     @Test
@@ -46,6 +46,6 @@ class RoleplayServiceTest {
 
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();
         assertEquals(0, saved.messages().size());
-        assertEquals(54, saved.relationship().familiarity());
+        assertEquals(54, saved.userRelationship().familiarity());
     }
 }

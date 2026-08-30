@@ -1,7 +1,10 @@
 package com.aditya.roleplay.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record Relationship(
-        String characterId,
+        String targetId,
         int trust,
         int respect,
         int affection,
@@ -10,7 +13,7 @@ public record Relationship(
 
     public Relationship clamped() {
         return new Relationship(
-                characterId,
+                targetId,
                 clamp(trust),
                 clamp(respect),
                 clamp(affection),

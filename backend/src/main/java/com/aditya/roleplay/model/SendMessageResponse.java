@@ -1,8 +1,10 @@
 package com.aditya.roleplay.model;
 
+import java.util.List;
+
 public record SendMessageResponse(
         Message message,
         String conversationId,
         Scene scene,
-        Relationship relationship) {
+        List<Relationship> relationships) {
 }

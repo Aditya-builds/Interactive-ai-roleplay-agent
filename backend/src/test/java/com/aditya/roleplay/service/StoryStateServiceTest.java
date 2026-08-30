@@ -18,7 +18,6 @@ class StoryStateServiceTest {
         CharacterRuntimeState state = new CharacterRuntimeState(
                 "aurora",
                 new CharacterHealth(30, 100),
-                "guild_hall",
                 null,
                 null);
 
@@ -37,7 +36,6 @@ class StoryStateServiceTest {
         CharacterRuntimeState state = new CharacterRuntimeState(
                 "aurora",
                 new CharacterHealth(90, 100),
-                "guild_hall",
                 null,
                 null);
 
@@ -49,5 +47,23 @@ class StoryStateServiceTest {
                 "20"));
 
         assertEquals(100, updated.health().current());
+    }
+
+    @Test
+    void appliesEmotionChange() {
+        CharacterRuntimeState state = new CharacterRuntimeState(
+                "aurora",
+                new CharacterHealth(100, 100),
+                null,
+                null);
+
+        CharacterRuntimeState updated = storyStateService.applyEmotionChange(state, new StateChange(
+                StateChangeType.EMOTION,
+                "aurora",
+                "emotion",
+                StateChangeOperation.SET,
+                "angry"));
+
+        assertEquals("angry", updated.emotion());
     }
 }

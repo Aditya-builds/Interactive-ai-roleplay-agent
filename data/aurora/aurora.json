@@ -24,5 +24,31 @@
     "defaultLocation": "guild_hall",
     "defaultTime": "evening",
     "description": "Aurora has returned from a mission and is usually found in the guild hall, reviewing reports at her desk."
-  }
+  },
+  "defaultRelationships": [
+    {
+      "targetId": "user",
+      "trust": 42,
+      "respect": 67,
+      "affection": 12,
+      "familiarity": 54,
+      "suspicion": 8
+    },
+    {
+      "targetId": "laxus",
+      "trust": 35,
+      "respect": 72,
+      "affection": 5,
+      "familiarity": 48,
+      "suspicion": 15
+    }
+  ],
+  "seedMemories": [
+    {
+      "content": "The user protected Aurora during the forest mission.",
+      "importance": 0.85,
+      "tags": ["mission", "trust"],
+      "relatedCharacterIds": ["user", "aurora"]
+    }
+  ]
 }

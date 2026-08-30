@@ -23,5 +23,31 @@
     "defaultLocation": "training_ground",
     "defaultTime": "morning",
     "description": "Laxus is at the guild training ground, lightning crackling faintly around his fists as he waits for a worthy spar."
-  }
+  },
+  "defaultRelationships": [
+    {
+      "targetId": "user",
+      "trust": 28,
+      "respect": 45,
+      "affection": 8,
+      "familiarity": 22,
+      "suspicion": 20
+    },
+    {
+      "targetId": "aurora",
+      "trust": 40,
+      "respect": 78,
+      "affection": 10,
+      "familiarity": 55,
+      "suspicion": 12
+    }
+  ],
+  "seedMemories": [
+    {
+      "content": "Laxus once lost a spar to the user and has watched them closely ever since.",
+      "importance": 0.7,
+      "tags": ["rivalry", "respect"],
+      "relatedCharacterIds": ["user", "laxus"]
+    }
+  ]
 }

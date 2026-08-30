@@ -1,0 +1,323 @@
+{
+  "id": "conversation-001",
+  "worldId": "fantasy_world",
+  "focalCharacterId": "aurora",
+  "player": {
+    "id": "user",
+    "name": "Aditya"
+  },
+  "activeCharacters": ["aurora", "laxus"],
+  "createdAt": "2026-08-30T17:00:00Z",
+  "updatedAt": "2026-08-30T18:45:00Z",
+
+  "currentScene": {
+    "locationId": "guild_hall",
+    "time": "late evening",
+    "charactersPresent": ["aurora", "laxus", "user"],
+    "currentSituation": "Aurora has returned from the forest sortie injured but successful. Laxus listens to the debrief with crossed arms. The guild hall has emptied for the night.",
+    "currentConflict": null,
+    "environment": {
+      "weather": "clear",
+      "lighting": "dim lantern light"
+    }
+  },
+
+  "characterStates": {
+    "aurora": {
+      "characterId": "aurora",
+      "health": { "current": 72, "max": 100 },
+      "locationId": "guild_hall",
+      "status": "injured",
+      "emotion": "determined"
+    },
+    "laxus": {
+      "characterId": "laxus",
+      "health": { "current": 100, "max": 100 },
+      "locationId": "guild_hall",
+      "status": "healthy",
+      "emotion": "skeptical"
+    }
+  },
+
+  "relationships": [
+    {
+      "id": "rel-aurora-user",
+      "characterA": "aurora",
+      "characterB": "user",
+      "metrics": {
+        "trust": 58,
+        "respect": 76,
+        "affection": 20,
+        "familiarity": 68,
+        "suspicion": 4
+      },
+      "status": "developing",
+      "summary": "After the forest ambush, Aurora trusts the user significantly more — they held the line and took a hit meant for her."
+    },
+    {
+      "id": "rel-aurora-laxus",
+      "characterA": "aurora",
+      "characterB": "laxus",
+      "metrics": {
+        "trust": 36,
+        "respect": 74,
+        "affection": 5,
+        "familiarity": 50,
+        "suspicion": 12
+      },
+      "status": "professional",
+      "summary": "Laxus grudgingly acknowledges Aurora's call to bring the user on the mission."
+    },
+    {
+      "id": "rel-laxus-user",
+      "characterA": "laxus",
+      "characterB": "user",
+      "metrics": {
+        "trust": 34,
+        "respect": 52,
+        "affection": 8,
+        "familiarity": 28,
+        "suspicion": 15
+      },
+      "status": "testing",
+      "summary": "Laxus saw the user fight in the clearing — respect ticked up, but he still wants proof it wasn't luck."
+    }
+  ],
+
+  "events": [
+    {
+      "id": "event-001",
+      "type": "DIALOGUE",
+      "description": "Aurora briefed the user on a failed forest recon and signs of ice-mage activity.",
+      "participants": ["aurora", "user"],
+      "locationId": "guild_hall",
+      "importance": 0.5,
+      "timestamp": "2026-08-30T17:08:00Z"
+    },
+    {
+      "id": "event-002",
+      "type": "TRAVEL",
+      "description": "Aurora and the user departed the guild hall for the Whispering Forest.",
+      "participants": ["aurora", "user"],
+      "locationId": "forest",
+      "importance": 0.6,
+      "timestamp": "2026-08-30T17:25:00Z"
+    },
+    {
+      "id": "event-003",
+      "type": "COMBAT",
+      "description": "An ice mage ambushed Aurora and the user at a forest clearing.",
+      "participants": ["aurora", "user", "ice_mage"],
+      "locationId": "forest_clearing",
+      "importance": 0.85,
+      "timestamp": "2026-08-30T17:52:00Z"
+    },
+    {
+      "id": "event-004",
+      "type": "COMBAT",
+      "description": "The user intercepted a frost bolt aimed at Aurora, allowing her to close distance and finish the ice mage.",
+      "participants": ["aurora", "user", "ice_mage"],
+      "locationId": "forest_clearing",
+      "importance": 0.92,
+      "timestamp": "2026-08-30T17:54:00Z"
+    },
+    {
+      "id": "event-005",
+      "type": "TRAVEL",
+      "description": "Aurora and the user returned to the guild hall, Aurora wounded.",
+      "participants": ["aurora", "user"],
+      "locationId": "guild_hall",
+      "importance": 0.55,
+      "timestamp": "2026-08-30T18:20:00Z"
+    },
+    {
+      "id": "event-006",
+      "type": "DIALOGUE",
+      "description": "Laxus confronted Aurora about bringing the user on a classified sortie.",
+      "participants": ["aurora", "laxus", "user"],
+      "locationId": "guild_hall",
+      "importance": 0.65,
+      "timestamp": "2026-08-30T18:35:00Z"
+    }
+  ],
+
+  "memories": [
+    {
+      "id": "memory-seed-001",
+      "subject": "aurora",
+      "participants": ["aurora", "user"],
+      "content": "The user protected Aurora during an earlier forest mission when she was pinned down.",
+      "importance": 0.85,
+      "emotionalImpact": "positive",
+      "tags": ["mission", "trust", "protection"],
+      "source": "seed",
+      "createdAt": "2026-08-30T17:00:00Z"
+    },
+    {
+      "id": "memory-002",
+      "subject": "aurora",
+      "participants": ["aurora", "user"],
+      "content": "The user volunteered to accompany Aurora back into the forest without hesitation.",
+      "importance": 0.72,
+      "emotionalImpact": "positive",
+      "tags": ["trust", "volunteer"],
+      "source": "llm",
+      "createdAt": "2026-08-30T17:12:00Z"
+    },
+    {
+      "id": "memory-003",
+      "subject": "aurora",
+      "participants": ["aurora", "user"],
+      "content": "The user stepped between Aurora and the ice mage's frost bolt when she was exposed in the clearing.",
+      "importance": 0.95,
+      "emotionalImpact": "positive",
+      "tags": ["combat", "protection", "trust"],
+      "source": "llm",
+      "createdAt": "2026-08-30T17:55:00Z"
+    },
+    {
+      "id": "memory-004",
+      "subject": "laxus",
+      "participants": ["laxus", "user"],
+      "content": "Laxus watched the user hold their ground in the clearing — not a fluke from the old spar.",
+      "importance": 0.68,
+      "emotionalImpact": "mixed",
+      "tags": ["combat", "respect"],
+      "source": "llm",
+      "createdAt": "2026-08-30T18:40:00Z"
+    }
+  ],
+
+  "messages": [
+    {
+      "id": "msg-001",
+      "role": "user",
+      "content": "I push through the guild hall doors. Aurora is at her usual table, reports spread in front of her.",
+      "timestamp": "2026-08-30T17:02:00Z"
+    },
+    {
+      "id": "msg-002",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "Aurora looks up from the reports, violet eyes assessing you in a single sweep. \"You finally came.\" She closes the folder. \"Sit. We need to talk about the forest.\"",
+      "timestamp": "2026-08-30T17:03:00Z"
+    },
+    {
+      "id": "msg-003",
+      "role": "user",
+      "content": "I take the chair across from her. \"What happened out there?\"",
+      "timestamp": "2026-08-30T17:05:00Z"
+    },
+    {
+      "id": "msg-004",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "\"Recon went wrong.\" Aurora's voice stays level, but her jaw tightens. \"Ice mages — at least one, maybe a cell — have a foothold on the northern trail. I pulled back before they could pin me.\" She taps the map. \"The guild doesn't know how deep it goes yet.\"",
+      "timestamp": "2026-08-30T17:06:00Z"
+    },
+    {
+      "id": "msg-005",
+      "role": "user",
+      "content": "\"Then I'll go with you. You shouldn't go back alone.\"",
+      "timestamp": "2026-08-30T17:10:00Z"
+    },
+    {
+      "id": "msg-006",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "A pause — longer than her usual. \"You don't know what you're signing up for.\" But she doesn't refuse. She stands, gathering her blades. \"Fine. We leave in ten minutes. Stay close, do what I say, and don't be a hero.\" A beat. \"...Thank you.\"",
+      "timestamp": "2026-08-30T17:11:00Z"
+    },
+    {
+      "id": "msg-007",
+      "role": "user",
+      "content": "We slip into the forest under cover of dusk. I keep pace with Aurora, watching the treeline.",
+      "timestamp": "2026-08-30T17:28:00Z"
+    },
+    {
+      "id": "msg-008",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "The Whispering Forest closes around you — mist, dead leaves, the smell of frost where there shouldn't be any. Aurora raises a fist: halt. \"Tracks,\" she murmurs. \"Fresh. They're still here.\" She glances back at you. \"Ready?\"",
+      "timestamp": "2026-08-30T17:30:00Z"
+    },
+    {
+      "id": "msg-009",
+      "role": "user",
+      "content": "I spot movement in the clearing ahead — a hooded figure raising a staff. \"Ambush!\"",
+      "timestamp": "2026-08-30T17:50:00Z"
+    },
+    {
+      "id": "msg-010",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "The ice mage's bolt screams through the air. Aurora dives left — but she's a half-second late, frost clipping her shoulder as she rolls. She's up in an instant, blades out, but exposed for one dangerous moment. \"Cover me!\"",
+      "timestamp": "2026-08-30T17:51:00Z"
+    },
+    {
+      "id": "msg-011",
+      "role": "user",
+      "content": "I throw myself between Aurora and the next bolt, taking the frost on my arm so she can close the distance.",
+      "timestamp": "2026-08-30T17:53:00Z"
+    },
+    {
+      "id": "msg-012",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "Steel flashes. Aurora crosses the clearing in three strides and the fight is over before the mage can cast again. She stands over the body, breathing hard, blood on her sleeve — but her eyes are on you. \"That was reckless.\" Her voice drops. \"...You saved my life. I won't forget it.\"",
+      "timestamp": "2026-08-30T17:55:00Z"
+    },
+    {
+      "id": "msg-013",
+      "role": "user",
+      "content": "We make it back to the guild hall. Aurora is limping slightly. I support her without making a scene.",
+      "timestamp": "2026-08-30T18:18:00Z"
+    },
+    {
+      "id": "msg-014",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "The hall is nearly empty. Aurora sinks into a chair at her table, finally allowing the pain to show. \"Infirmary can wait.\" She looks at you. \"Sit. You took a hit for me out there. I need to know you're alright.\"",
+      "timestamp": "2026-08-30T18:22:00Z"
+    },
+    {
+      "id": "msg-015",
+      "role": "user",
+      "content": "\"I've had worse.\" I nod toward the door as footsteps approach. \"Looks like we've got company.\"",
+      "timestamp": "2026-08-30T18:32:00Z"
+    },
+    {
+      "id": "msg-016",
+      "role": "assistant",
+      "characterId": "laxus",
+      "content": "Laxus fills the doorway, lightning still faintly crackling around his knuckles. His eyes go from Aurora's bloodied sleeve to you. \"You took her on a classified sortie?\" He looks at you. \"And you're both walking. Huh.\" He doesn't sit. \"Tell me you didn't get lucky out there.\"",
+      "timestamp": "2026-08-30T18:34:00Z"
+    },
+    {
+      "id": "msg-017",
+      "role": "user",
+      "content": "\"Ask Aurora. She'll tell you what happened in the clearing.\"",
+      "timestamp": "2026-08-30T18:38:00Z"
+    },
+    {
+      "id": "msg-018",
+      "role": "assistant",
+      "characterId": "aurora",
+      "content": "Aurora meets Laxus's gaze without flinching. \"They held the line when I was exposed. Ice mage is dead. We have proof of a cell on the northern trail.\" She turns to you — and for the first time, something like warmth enters her voice. \"I vouch for them, Laxus.\"",
+      "timestamp": "2026-08-30T18:40:00Z"
+    },
+    {
+      "id": "msg-019",
+      "role": "user",
+      "content": "I meet Laxus's eyes. \"Whenever you want a rematch, you know where to find me.\"",
+      "timestamp": "2026-08-30T18:42:00Z"
+    },
+    {
+      "id": "msg-020",
+      "role": "assistant",
+      "characterId": "laxus",
+      "content": "Laxus snorts — almost a laugh. \"Don't get cocky.\" But he claps you on the shoulder, harder than necessary. \"Next time, don't let her walk into an ambush without backup.\" He glances at Aurora. \"Good work. Both of you.\" He turns to leave, then pauses. \"Infirmary. Now. That's an order, Aurora.\"",
+      "timestamp": "2026-08-30T18:44:00Z"
+    }
+  ]
+}

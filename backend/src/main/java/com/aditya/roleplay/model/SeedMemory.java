@@ -2,20 +2,16 @@ package com.aditya.roleplay.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.time.Instant;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record StoryMemoryEntry(
-        String id,
+public record SeedMemory(
         String content,
-        Instant createdAt,
-        String source,
         Double importance,
         List<String> tags,
         List<String> relatedCharacterIds) {
 
-    public StoryMemoryEntry {
+    public SeedMemory {
         tags = tags != null ? List.copyOf(tags) : List.of();
         relatedCharacterIds = relatedCharacterIds != null ? List.copyOf(relatedCharacterIds) : List.of();
     }

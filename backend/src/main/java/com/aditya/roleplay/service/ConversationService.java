@@ -4,13 +4,11 @@ import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.ConversationSummary;
 import com.aditya.roleplay.model.RoleplayCharacter;
-import com.aditya.roleplay.model.StoryMemoryEntry;
 import com.aditya.roleplay.storage.JsonStorageService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,17 +42,18 @@ public class ConversationService {
                 now,
                 storyStateService.createInitialCharacterState(character),
                 storyStateService.createInitialScene(character),
-                relationshipService.createInitialRelationship(character.id()),
+                relationshipService.createInitialRelationships(character),
                 List.of(),
-                defaultMemories(now),
+                characterService.seedMemoriesForCharacter(character, now),
                 List.of());
 
         return storage.saveConversation(conversation);
     }
 
     public Conversation getConversation(String id) {
-        return storage.loadConversation(id)
+        Conversation conversation = storage.loadConversation(id)
                 .orElseThrow(() -> new RoleplayException("Conversation not found: " + id, "CONVERSATION_NOT_FOUND", 404));
+        return migrateIfNeeded(conversation);
     }
 
     public Conversation save(Conversation conversation) {
@@ -71,14 +70,28 @@ public class ConversationService {
         storage.deleteConversation(id);
     }
 
-    private List<StoryMemoryEntry> defaultMemories(Instant now) {
-        List<StoryMemoryEntry> memories = new ArrayList<>();
-        memories.add(new StoryMemoryEntry(
-                UUID.randomUUID().toString(),
-                "The user protected Aurora during the forest mission.",
-                now.minusSeconds(86400),
-                "manual",
-                null));
-        return memories;
+    private Conversation migrateIfNeeded(Conversation conversation) {
+        boolean needsSave = false;
+        Conversation updated = conversation;
+
+        if (conversation.characterState() == null) {
+            RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
+            updated = updated.withCharacterState(storyStateService.createInitialCharacterState(character));
+            needsSave = true;
+        }
+        if (conversation.events() == null) {
+            updated = updated.withEvents(List.of());
+            needsSave = true;
+        }
+        if (conversation.relationships() == null || conversation.relationships().isEmpty()) {
+            RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
+            updated = updated.withRelationships(relationshipService.createInitialRelationships(character));
+            needsSave = true;
+        }
+
+        if (needsSave) {
+            return storage.saveConversation(updated);
+        }
+        return conversation;
     }
 }
