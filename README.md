@@ -63,7 +63,7 @@ backend/   →  Render   (Quarkus API)
 2. Set **Root Directory** to `frontend`
 3. Framework: **Angular**
 4. Build Command: `npm run build`
-5. Output Directory: `dist/frontend`
+5. Output Directory: `dist/frontend/browser`
 6. Install Command: `npm ci`
 
 **Environment variable (Vercel):**
