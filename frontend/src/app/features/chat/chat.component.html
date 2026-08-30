@@ -1,0 +1,53 @@
+<div class="chat-page">
+  <header class="chat-header">
+    <div class="header-left">
+      <a routerLink="/" class="back-link" title="Back to characters">←</a>
+      @if (characterImageUrl) {
+        <img class="header-avatar" [src]="characterImageUrl" [alt]="characterName" />
+      }
+      <div>
+        <h1>{{ characterName || 'Loading...' }}</h1>
+        @if (worldName) {
+          <p class="world">{{ worldName }} World</p>
+        }
+      </div>
+    </div>
+    <button
+      type="button"
+      class="fresh-btn"
+      [disabled]="loading || sending || restarting"
+      (click)="startFresh()"
+    >
+      {{ restarting ? 'Restarting...' : 'Start Fresh' }}
+    </button>
+  </header>
+
+  @if (error) {
+    <div class="error-banner">{{ error }}</div>
+  }
+
+  <div class="messages" #scrollContainer>
+    @if (loading) {
+      <app-loading-spinner label="Loading conversation..." />
+    } @else if (messages.length === 0) {
+      <div class="empty-state">
+        @if (characterImageUrl) {
+          <img [src]="characterImageUrl" [alt]="characterName" class="empty-avatar" />
+        }
+        <h2>Begin your story with {{ characterName }}</h2>
+        <p>Type an action or dialogue below to start the scene.</p>
+      </div>
+    } @else {
+      <app-message-list
+        [messages]="messages"
+        [characterName]="characterName"
+        [characterImageUrl]="characterImageUrl"
+      />
+      @if (sending) {
+        <app-loading-spinner label="Waiting for response..." [inline]="true" />
+      }
+    }
+  </div>
+
+  <app-message-input [disabled]="loading || sending || restarting" (send)="onSend($event)" />
+</div>

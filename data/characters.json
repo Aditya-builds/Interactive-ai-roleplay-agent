@@ -1,0 +1,13 @@
+[
+  {
+    "id": "aurora",
+    "name": "Aurora",
+    "worldId": "fantasy",
+    "imageUrl": "/characters/aurora.png"
+  },
+  {
+    "id": "laxus",
+    "name": "Laxus",
+    "worldId": "fantasy"
+  }
+]

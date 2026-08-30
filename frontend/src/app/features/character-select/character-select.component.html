@@ -1,0 +1,48 @@
+<div class="select-page">
+  <header class="hero">
+    <div class="hero-badge">Interactive Story</div>
+    <h1>Roleplay Engine</h1>
+    <p>Choose a character to begin your story.</p>
+  </header>
+
+  @if (error) {
+    <div class="error-banner">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <app-loading-spinner label="Loading characters..." />
+  } @else {
+    <div class="character-grid">
+      @for (character of characters; track character.id) {
+        <button
+          type="button"
+          class="character-card"
+          [disabled]="starting"
+          (click)="selectCharacter(character)"
+        >
+          <div class="card-image">
+            @if (character.imageUrl) {
+              <img [src]="character.imageUrl" [alt]="character.name" />
+            } @else {
+              <div class="avatar-placeholder">{{ character.name.charAt(0) }}</div>
+            }
+          </div>
+          <div class="card-body">
+            <h2>{{ character.name }}</h2>
+            <div class="trait-tags">
+              @for (trait of character.personality; track trait) {
+                <span class="tag">{{ trait }}</span>
+              }
+            </div>
+            <p class="background">{{ character.background }}</p>
+            <span class="start-label">Start story →</span>
+          </div>
+        </button>
+      }
+    </div>
+  }
+
+  @if (starting) {
+    <app-loading-spinner label="Starting conversation..." [inline]="true" />
+  }
+</div>

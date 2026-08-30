@@ -1,0 +1,10 @@
+{
+  "id": "fantasy",
+  "name": "Fantasy",
+  "description": "A world of magic, guilds, and rival factions where power is earned through skill and cunning.",
+  "rules": [
+    "Magic exists and is regulated by guild charters.",
+    "Guilds hold political power in major cities.",
+    "Factions compete for influence through missions, trade, and covert operations."
+  ]
+}

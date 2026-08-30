@@ -1,0 +1,12 @@
+<div class="bubble-row" [class.user]="message.role === 'user'" [class.assistant]="message.role === 'assistant'">
+  @if (message.role === 'assistant' && characterImageUrl) {
+    <img class="avatar" [src]="characterImageUrl" [alt]="characterName" />
+  }
+  <div class="bubble">
+    <div class="sender">{{ message.role === 'user' ? 'You' : characterName }}</div>
+    <div class="content">{{ message.content }}</div>
+  </div>
+  @if (message.role === 'user') {
+    <div class="avatar user-avatar">You</div>
+  }
+</div>

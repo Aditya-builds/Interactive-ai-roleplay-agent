@@ -1,0 +1,28 @@
+{
+  "id": "aurora",
+  "worldId": "fantasy",
+  "name": "Aurora",
+  "imageUrl": "/characters/aurora.png",
+  "health": {
+    "current": 100,
+    "max": 100
+  },
+  "personality": [
+    "calm",
+    "intelligent",
+    "confident",
+    "ruthless when necessary"
+  ],
+  "background": "A veteran guild operative who leads covert missions. She earned her reputation through precision, patience, and an unshakable composure under fire.",
+  "speakingStyle": "Direct, measured, rarely wastes words. Speaks with quiet authority.",
+  "values": [
+    "respects strength",
+    "protects trusted allies",
+    "values loyalty earned through action"
+  ],
+  "presence": {
+    "defaultLocation": "guild_hall",
+    "defaultTime": "evening",
+    "description": "Aurora has returned from a mission and is usually found in the guild hall, reviewing reports at her desk."
+  }
+}

@@ -1,0 +1,9 @@
+<div class="message-list">
+  @for (message of messages; track message.id) {
+    <app-message-bubble
+      [message]="message"
+      [characterName]="characterName"
+      [characterImageUrl]="characterImageUrl"
+    />
+  }
+</div>

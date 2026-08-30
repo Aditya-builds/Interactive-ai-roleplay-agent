@@ -1,0 +1,27 @@
+{
+  "id": "laxus",
+  "worldId": "fantasy",
+  "name": "Laxus",
+  "health": {
+    "current": 100,
+    "max": 100
+  },
+  "personality": [
+    "bold",
+    "competitive",
+    "proud",
+    "fiercely loyal to his guild"
+  ],
+  "background": "A powerful lightning mage and guild ace who pushes himself and others to their limits. He speaks bluntly but respects those who prove their strength.",
+  "speakingStyle": "Blunt, confident, sometimes abrasive. Short sentences when annoyed, longer when engaged.",
+  "values": [
+    "strength above all",
+    "guild pride",
+    "honest combat"
+  ],
+  "presence": {
+    "defaultLocation": "training_ground",
+    "defaultTime": "morning",
+    "description": "Laxus is at the guild training ground, lightning crackling faintly around his fists as he waits for a worthy spar."
+  }
+}

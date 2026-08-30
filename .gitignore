@@ -1,0 +1,21 @@
+# Secrets
+.env
+backend/.env
+
+# Build
+backend/target/
+frontend/dist/
+frontend/.angular/
+frontend/node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime data (conversations are generated at runtime)
+data/conversations/
