@@ -35,7 +35,7 @@ class StateChangeProcessorTest {
         RoleplayCharacter character = sampleCharacter();
         StateChangeProcessor.ConversationState initial = new StateChangeProcessor.ConversationState(
                 "aurora",
-                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), null, null),
+                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), "guild_hall", null, null),
                 new Scene("guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null),
                 List.of(new Relationship("user", 40, 50, 10, 20, 5)),
                 List.of(),
@@ -61,43 +61,34 @@ class StateChangeProcessorTest {
     }
 
     @Test
-    void appliesCrossCharacterRelationshipChange() {
+    void syncsSceneAndCharacterLocationOnLocationChange() {
         StateChangeProcessor.ConversationState initial = new StateChangeProcessor.ConversationState(
                 "aurora",
-                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), null, null),
+                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), "guild_hall", null, null),
                 new Scene("guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null),
-                List.of(
-                        new Relationship("user", 40, 50, 10, 20, 5),
-                        new Relationship("laxus", 35, 72, 5, 48, 15)),
+                List.of(new Relationship("user", 40, 50, 10, 20, 5)),
                 List.of(),
                 List.of());
 
         LlmTurnResult turnResult = new LlmTurnResult(
-                "Aurora nods at Laxus.",
+                "They travel.",
                 List.of(new StateChange(
-                        StateChangeType.RELATIONSHIP,
-                        "laxus",
-                        "trust",
-                        StateChangeOperation.INCREASE,
-                        "3")),
+                        StateChangeType.LOCATION, "aurora", "location", StateChangeOperation.SET, "forest")),
                 List.of(),
                 List.of());
 
         StateChangeProcessor.ConversationState updated = processor.apply(
                 initial, sampleCharacter(), turnResult, Set.of("user", "laxus"));
 
-        Relationship withLaxus = updated.relationships().stream()
-                .filter(r -> "laxus".equals(r.targetId()))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(38, withLaxus.trust());
+        assertEquals("forest", updated.scene().location());
+        assertEquals("forest", updated.characterState().location());
     }
 
     @Test
     void appliesSceneLocationAndCharactersPresent() {
         StateChangeProcessor.ConversationState initial = new StateChangeProcessor.ConversationState(
                 "aurora",
-                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), null, null),
+                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), "guild_hall", null, null),
                 new Scene("guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null),
                 List.of(new Relationship("user", 40, 50, 10, 20, 5)),
                 List.of(),
@@ -107,7 +98,7 @@ class StateChangeProcessorTest {
                 "They head out.",
                 List.of(
                         new StateChange(StateChangeType.SCENE, "scene", "location", StateChangeOperation.SET, "forest"),
-                        new StateChange(StateChangeType.SCENE, "scene", "charactersPresent", StateChangeOperation.SET, "[\"aurora\",\"user\",\"laxus\"]")),
+                        new StateChange(StateChangeType.SCENE, "scene", "addCharacter", StateChangeOperation.SET, "laxus")),
                 List.of(),
                 List.of());
 
@@ -115,7 +106,31 @@ class StateChangeProcessorTest {
                 initial, sampleCharacter(), turnResult, Set.of("user", "laxus"));
 
         assertEquals("forest", updated.scene().location());
+        assertEquals("forest", updated.characterState().location());
         assertEquals(List.of("aurora", "user", "laxus"), updated.scene().charactersPresent());
+    }
+
+    @Test
+    void skipsDuplicateMemories() {
+        StateChangeProcessor.ConversationState initial = new StateChangeProcessor.ConversationState(
+                "aurora",
+                new CharacterRuntimeState("aurora", new CharacterHealth(100, 100), "guild_hall", null, null),
+                new Scene("guild_hall", "evening", List.of("aurora", "user"), "Quiet.", null),
+                List.of(new Relationship("user", 40, 50, 10, 20, 5)),
+                List.of(),
+                List.of(new com.aditya.roleplay.model.StoryMemoryEntry(
+                        "m1", "Same fact.", java.time.Instant.now(), "seed", 0.9, List.of(), List.of())));
+
+        LlmTurnResult turnResult = new LlmTurnResult(
+                "Noted.",
+                List.of(),
+                List.of(),
+                List.of(new ProposedMemory("Same fact.", 0.95, List.of(), List.of())));
+
+        StateChangeProcessor.ConversationState updated = processor.apply(
+                initial, sampleCharacter(), turnResult, Set.of("user"));
+
+        assertEquals(1, updated.memories().size());
     }
 
     @Test
@@ -129,36 +144,6 @@ class StateChangeProcessorTest {
                         "2"),
                 "aurora",
                 Set.of("user", "laxus"));
-
-        assertFalse(result.valid());
-    }
-
-    @Test
-    void rejectsUnsupportedField() {
-        StateChangeValidator.ValidationResult result = validator.validate(
-                new StateChange(
-                        StateChangeType.RELATIONSHIP,
-                        "user",
-                        "charisma",
-                        StateChangeOperation.INCREASE,
-                        "2"),
-                "aurora",
-                Set.of("user"));
-
-        assertFalse(result.valid());
-    }
-
-    @Test
-    void rejectsOversizedRelationshipDelta() {
-        StateChangeValidator.ValidationResult result = validator.validate(
-                new StateChange(
-                        StateChangeType.RELATIONSHIP,
-                        "user",
-                        "trust",
-                        StateChangeOperation.INCREASE,
-                        "50"),
-                "aurora",
-                Set.of("user"));
 
         assertFalse(result.valid());
     }

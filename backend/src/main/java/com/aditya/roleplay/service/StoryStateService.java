@@ -11,7 +11,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @ApplicationScoped
 public class StoryStateService {
@@ -41,7 +44,22 @@ public class StoryStateService {
         CharacterHealth health = character.health() != null
                 ? character.health()
                 : new CharacterHealth(100, 100);
-        return new CharacterRuntimeState(character.id(), health, null, null);
+        String location = character.presence() != null
+                ? character.presence().defaultLocation()
+                : "unknown";
+        return new CharacterRuntimeState(character.id(), health, location, null, null);
+    }
+
+    public CharacterRuntimeState syncLocationFromScene(CharacterRuntimeState state, Scene scene) {
+        if (state == null || scene == null) {
+            return state;
+        }
+        return new CharacterRuntimeState(
+                state.characterId(),
+                state.health(),
+                scene.location(),
+                state.status(),
+                state.emotion());
     }
 
     public Scene applySceneChange(Scene scene, StateChange change) {
@@ -76,6 +94,18 @@ public class StoryStateService {
                     parseCharactersPresent(change.value()),
                     scene.currentSituation(),
                     scene.currentConflict());
+            case "addCharacter" -> new Scene(
+                    scene.location(),
+                    scene.time(),
+                    addCharacterPresent(scene.charactersPresent(), change.value()),
+                    scene.currentSituation(),
+                    scene.currentConflict());
+            case "removeCharacter" -> new Scene(
+                    scene.location(),
+                    scene.time(),
+                    removeCharacterPresent(scene.charactersPresent(), change.value()),
+                    scene.currentSituation(),
+                    scene.currentConflict());
             default -> scene;
         };
     }
@@ -87,6 +117,16 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 new CharacterHealth(current, max),
+                state.location(),
+                state.status(),
+                state.emotion());
+    }
+
+    public CharacterRuntimeState applyLocationChange(CharacterRuntimeState state, StateChange change) {
+        return new CharacterRuntimeState(
+                state.characterId(),
+                state.health(),
+                change.value(),
                 state.status(),
                 state.emotion());
     }
@@ -96,6 +136,7 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 state.health(),
+                state.location(),
                 status,
                 state.emotion());
     }
@@ -105,6 +146,7 @@ public class StoryStateService {
         return new CharacterRuntimeState(
                 state.characterId(),
                 state.health(),
+                state.location(),
                 state.status(),
                 emotion);
     }
@@ -115,10 +157,44 @@ public class StoryStateService {
             if (parsed.isEmpty()) {
                 throw new IllegalArgumentException("charactersPresent cannot be empty");
             }
-            return List.copyOf(parsed);
+            return dedupePreservingOrder(parsed);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid charactersPresent JSON array: " + value, e);
         }
+    }
+
+    private List<String> addCharacterPresent(List<String> current, String characterId) {
+        List<String> updated = new ArrayList<>(current != null ? current : List.of());
+        if (!updated.contains(characterId)) {
+            updated.add(characterId);
+        }
+        if (!updated.contains("user")) {
+            updated.add("user");
+        }
+        return dedupePreservingOrder(updated);
+    }
+
+    private List<String> removeCharacterPresent(List<String> current, String characterId) {
+        if ("user".equals(characterId)) {
+            throw new IllegalArgumentException("Cannot remove user from charactersPresent");
+        }
+        List<String> updated = new ArrayList<>(current != null ? current : List.of());
+        updated.removeIf(id -> id.equals(characterId));
+        if (updated.isEmpty()) {
+            throw new IllegalArgumentException("charactersPresent cannot be empty");
+        }
+        if (!updated.contains("user")) {
+            updated.add("user");
+        }
+        return dedupePreservingOrder(updated);
+    }
+
+    private List<String> dedupePreservingOrder(List<String> ids) {
+        Set<String> seen = new LinkedHashSet<>();
+        for (String id : ids) {
+            seen.add(id);
+        }
+        return List.copyOf(seen);
     }
 
     private int applyNumericValue(int current, StateChange change, int max) {

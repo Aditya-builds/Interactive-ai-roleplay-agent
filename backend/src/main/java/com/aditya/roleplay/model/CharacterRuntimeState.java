@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record CharacterRuntimeState(
         String characterId,
         CharacterHealth health,
+        String location,
         String status,
         String emotion) {
 }

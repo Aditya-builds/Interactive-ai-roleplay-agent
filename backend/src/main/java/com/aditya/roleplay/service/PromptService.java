@@ -121,9 +121,9 @@ public class PromptService {
 
                 STATE CHANGE RULES
                 - RELATIONSHIP targetId is who %s has feelings toward: %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE (1-5) or SET (0-100).
-                - SCENE targetId must be "scene". Fields: location, time, currentSituation, currentConflict, charactersPresent. Use SET only. Location slugs: guild_hall, forest, training_ground, etc. charactersPresent value is a JSON array string, e.g. ["%s","user"].
+                - SCENE targetId must be "scene". Fields: location, time, currentSituation, currentConflict, charactersPresent, addCharacter, removeCharacter. Use SET only. Location slugs: guild_hall, forest, training_ground, etc. charactersPresent value is a JSON array string, e.g. ["%s","user"]. addCharacter/removeCharacter value is a single character id.
                 - HEALTH targetId must be %s. Field: current. Use INCREASE/DECREASE/SET for damage or healing.
-                - LOCATION is shorthand for moving the scene; use targetId "scene", field "location", SET only.
+                - LOCATION targetId must be %s or "scene". Field: location. SET only. Updates scene and character location together.
                 - STATUS targetId must be %s. Field: status. SET only (injured, exhausted, or null).
                 - EMOTION targetId must be %s. Field: emotion. SET only (angry, calm, etc.).
                 - Propose at most 5 stateChanges per turn.

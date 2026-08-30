@@ -42,7 +42,7 @@ class PromptContextServiceTest {
         String context = promptContextService.buildTurnContext(conversation, "Hello", Set.of("user", "laxus"));
 
         assertTrue(context.contains("CURRENT SITUATION"));
-        assertTrue(context.contains("RECENT EVENTS"));
+        assertTrue(context.contains("RECENT STORY EVENTS"));
         assertTrue(context.contains("Aurora was ambushed."));
         assertTrue(context.contains("Forest mission rescue."));
         assertTrue(context.contains("RELATIONSHIPS"));

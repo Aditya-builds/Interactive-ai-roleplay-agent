@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,7 +27,7 @@ public class PromptContextService {
                 CURRENT SITUATION
                 %s
 
-                RECENT EVENTS
+                RECENT STORY EVENTS
                 %s
 
                 IMPORTANT MEMORIES
@@ -58,6 +59,7 @@ public class PromptContextService {
         String conflict = scene.currentConflict() != null ? scene.currentConflict() : "none";
         String status = runtime != null && runtime.status() != null ? runtime.status() : "none";
         String emotion = runtime != null && runtime.emotion() != null ? runtime.emotion() : "none";
+        String runtimeLocation = runtime != null && runtime.location() != null ? runtime.location() : scene.location();
 
         return """
                 Location: %s
@@ -66,6 +68,7 @@ public class PromptContextService {
                 Situation: %s
                 Conflict: %s
                 %s health: %d/%d
+                %s location: %s
                 Status: %s
                 Emotion: %s
                 """.formatted(
@@ -77,6 +80,8 @@ public class PromptContextService {
                 conversation.characterId(),
                 health.current(),
                 health.max(),
+                conversation.characterId(),
+                runtimeLocation,
                 status,
                 emotion).stripTrailing();
     }
@@ -103,14 +108,20 @@ public class PromptContextService {
                         .comparing((StoryMemoryEntry m) -> m.importance() != null ? m.importance() : 0.0)
                         .reversed()
                         .thenComparing(StoryMemoryEntry::createdAt, Comparator.reverseOrder()))
+                .limit(importantMemoriesCount * 2L)
+                .toList();
+
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        List<StoryMemoryEntry> deduped = ranked.stream()
+                .filter(memory -> seen.add(memory.content().trim().toLowerCase()))
                 .limit(importantMemoriesCount)
                 .toList();
 
-        if (ranked.isEmpty()) {
+        if (deduped.isEmpty()) {
             return "- (none yet)";
         }
 
-        return ranked.stream()
+        return deduped.stream()
                 .map(memory -> {
                     String tags = memory.tags().isEmpty() ? "" : " (" + String.join(", ", memory.tags()) + ")";
                     return "- " + memory.content() + tags;

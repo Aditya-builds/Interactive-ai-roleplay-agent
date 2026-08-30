@@ -37,8 +37,14 @@ final class ConversationJsonMigration {
             object.remove("relationship");
         }
 
-        if (object.has("characterState") && object.get("characterState").isObject()) {
-            ((ObjectNode) object.get("characterState")).remove("location");
+        if (object.has("characterState") && object.get("characterState").isObject()
+                && object.has("scene") && object.get("scene").isObject()) {
+            ObjectNode characterState = (ObjectNode) object.get("characterState");
+            String sceneLocation = object.get("scene").path("location").asText("");
+            if (!sceneLocation.isBlank()
+                    && (!characterState.has("location") || characterState.get("location").asText("").isBlank())) {
+                characterState.put("location", sceneLocation);
+            }
         }
 
         return object;

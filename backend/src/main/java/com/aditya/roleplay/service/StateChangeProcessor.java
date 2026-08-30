@@ -57,6 +57,7 @@ public class StateChangeProcessor {
             Set<String> allowedRelationshipTargets) {
 
         ConversationState current = state.ensureCharacterState(characterDefinition);
+        current = syncLocation(current);
 
         List<Relationship> relationships = new ArrayList<>(current.relationships());
         Scene scene = current.scene();
@@ -86,6 +87,10 @@ public class StateChangeProcessor {
                 }
                 case SCENE -> {
                     scene = storyStateService.applySceneChange(scene, normalized);
+                    if ("location".equals(normalized.field())) {
+                        characterState = storyStateService.applyLocationChange(characterState, locationChangeFor(
+                                current.characterId(), normalized.value()));
+                    }
                     applied++;
                 }
                 case HEALTH -> {
@@ -94,6 +99,8 @@ public class StateChangeProcessor {
                 }
                 case LOCATION -> {
                     scene = storyStateService.applySceneChange(scene, toSceneLocationChange(normalized));
+                    characterState = storyStateService.applyLocationChange(characterState, locationChangeFor(
+                            current.characterId(), normalized.value()));
                     applied++;
                 }
                 case STATUS -> {
@@ -106,6 +113,8 @@ public class StateChangeProcessor {
                 }
             }
         }
+
+        characterState = storyStateService.syncLocationFromScene(characterState, scene);
 
         Instant now = Instant.now();
         for (ProposedStoryEvent proposed : turnResult.events()) {
@@ -131,6 +140,9 @@ public class StateChangeProcessor {
             if (importance < memoryImportanceThreshold) {
                 continue;
             }
+            if (hasDuplicateMemory(memories, proposed.content())) {
+                continue;
+            }
             memories.add(new StoryMemoryEntry(
                     UUID.randomUUID().toString(),
                     proposed.content().trim(),
@@ -153,8 +165,34 @@ public class StateChangeProcessor {
                 memories);
     }
 
+    private ConversationState syncLocation(ConversationState state) {
+        CharacterRuntimeState synced = storyStateService.syncLocationFromScene(state.characterState(), state.scene());
+        return new ConversationState(
+                state.characterId(),
+                synced,
+                state.scene(),
+                state.relationships(),
+                state.events(),
+                state.memories());
+    }
+
+    private StateChange locationChangeFor(String characterId, String location) {
+        return new StateChange(
+                StateChangeType.LOCATION,
+                characterId,
+                "location",
+                StateChangeOperation.SET,
+                location);
+    }
+
     private StateChange normalizeChange(StateChange change, String conversationCharacterId) {
         if (change.type() == StateChangeType.LOCATION) {
+            if ("scene".equals(change.targetId())) {
+                return change;
+            }
+            if (conversationCharacterId.equals(change.targetId()) && "location".equals(change.field())) {
+                return change;
+            }
             return toSceneLocationChange(change);
         }
         if (change.type() == StateChangeType.RELATIONSHIP && conversationCharacterId.equals(change.targetId())) {
@@ -169,12 +207,21 @@ public class StateChangeProcessor {
     }
 
     private StateChange toSceneLocationChange(StateChange change) {
+        String location = change.value();
+        if ("location".equals(change.field()) && !"scene".equals(change.targetId())) {
+            location = change.value();
+        }
         return new StateChange(
                 StateChangeType.SCENE,
                 "scene",
                 "location",
                 StateChangeOperation.SET,
-                change.value());
+                location);
+    }
+
+    private boolean hasDuplicateMemory(List<StoryMemoryEntry> memories, String content) {
+        String normalized = content.trim().toLowerCase();
+        return memories.stream().anyMatch(m -> m.content().trim().toLowerCase().equals(normalized));
     }
 
     private List<StoryMemoryEntry> trimMemories(List<StoryMemoryEntry> memories, int max) {
@@ -208,9 +255,11 @@ public class StateChangeProcessor {
             CharacterHealth health = character.health() != null
                     ? character.health()
                     : new CharacterHealth(100, 100);
+            String location = scene != null ? scene.location()
+                    : (character.presence() != null ? character.presence().defaultLocation() : "unknown");
             return new ConversationState(
                     characterId,
-                    new CharacterRuntimeState(character.id(), health, null, null),
+                    new CharacterRuntimeState(character.id(), health, location, null, null),
                     scene,
                     relationships,
                     events,

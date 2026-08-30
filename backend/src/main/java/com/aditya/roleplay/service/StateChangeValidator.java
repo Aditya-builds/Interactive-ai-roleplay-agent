@@ -21,7 +21,8 @@ public class StateChangeValidator {
             "trust", "respect", "affection", "familiarity", "suspicion");
 
     private static final Set<String> SCENE_FIELDS = Set.of(
-            "location", "time", "currentSituation", "currentConflict", "charactersPresent");
+            "location", "time", "currentSituation", "currentConflict",
+            "charactersPresent", "addCharacter", "removeCharacter");
 
     private static final Set<StateChangeOperation> NUMERIC_OPS = Set.of(
             StateChangeOperation.INCREASE,
@@ -123,6 +124,15 @@ public class StateChangeValidator {
         if (change.field().equals("charactersPresent")) {
             return validateCharactersPresentValue(change.value());
         }
+        if (change.field().equals("addCharacter")) {
+            return validateCharacterIdValue(change.value());
+        }
+        if (change.field().equals("removeCharacter")) {
+            if ("user".equals(change.value())) {
+                return ValidationResult.rejected("Cannot remove user from the scene");
+            }
+            return validateCharacterIdValue(change.value());
+        }
         return ValidationResult.accepted();
     }
 
@@ -184,6 +194,13 @@ public class StateChangeValidator {
             return ValidationResult.rejected("Emotion changes only support SET");
         }
         return ValidationResult.accepted();
+    }
+
+    private ValidationResult validateCharacterIdValue(String value) {
+        if ("user".equals(value) || CHARACTER_ID_PATTERN.matcher(value).matches()) {
+            return ValidationResult.accepted();
+        }
+        return ValidationResult.rejected("Invalid character id: " + value);
     }
 
     private ValidationResult validateCharactersPresentValue(String value) {

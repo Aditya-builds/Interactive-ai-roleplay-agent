@@ -1,6 +1,7 @@
 package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.exception.RoleplayException;
+import com.aditya.roleplay.model.CharacterRuntimeState;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.ConversationSummary;
 import com.aditya.roleplay.model.RoleplayCharacter;
@@ -87,6 +88,16 @@ public class ConversationService {
             RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
             updated = updated.withRelationships(relationshipService.createInitialRelationships(character));
             needsSave = true;
+        }
+
+        if (updated.characterState() != null && updated.scene() != null) {
+            CharacterRuntimeState synced = storyStateService.syncLocationFromScene(
+                    updated.characterState(), updated.scene());
+            if (synced != null && synced.location() != null
+                    && !synced.location().equals(updated.characterState().location())) {
+                updated = updated.withCharacterState(synced);
+                needsSave = true;
+            }
         }
 
         if (needsSave) {

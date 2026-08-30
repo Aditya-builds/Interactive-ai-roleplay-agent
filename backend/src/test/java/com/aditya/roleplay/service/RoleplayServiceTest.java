@@ -6,6 +6,7 @@ import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.storage.JsonStorageService;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,6 +23,12 @@ class RoleplayServiceTest {
 
     @Inject
     JsonStorageService storage;
+
+    @BeforeEach
+    void resetLlm() {
+        TestLlmClient.reset();
+        TestLlmClient.structuredSuccess = true;
+    }
 
     @Test
     void savesResponseAndRelationshipOnStructuredTurn() {
