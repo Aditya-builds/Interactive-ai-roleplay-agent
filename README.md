@@ -78,21 +78,28 @@ Local dev uses relative `/api` URLs with the dev proxy — no env var needed.
 
 ### Backend (Render)
 
-Use the included `render.yaml` blueprint, or create a **Web Service** manually:
+Use the included `render.yaml` blueprint, or create a **Web Service** manually with **Docker**:
 
 | Setting | Value |
 |---------|-------|
-| Root Directory | `backend` |
-| Build Command | `mvn package -DskipTests` |
-| Start Command | `java -jar target/quarkus-app/quarkus-run.jar` |
+| Language | Docker |
+| Root Directory | *(leave empty — repo root)* |
+| Dockerfile Path | `backend/Dockerfile` |
+| Docker Context | `.` (repository root) |
+
+The Dockerfile builds Quarkus from `backend/` and copies the repo `data/` folder into the image at `/data` so stories, personas, and characters load correctly.
+
+**Do not** set Root Directory to `backend` only — the build context must include the sibling `data/` directory.
 
 **Environment variables (Render):**
 
 ```text
 OPENAI_API_KEY=your_key
 CORS_ORIGINS=https://your-app.vercel.app
-ROLEPLAY_DATA_DIR=../data
+ROLEPLAY_DATA_DIR=/data
 ```
+
+`ROLEPLAY_DATA_DIR=/data` is already set in the Dockerfile and `render.yaml`; you only need to override it if you change the image layout.
 
 For DeepSeek instead of OpenAI:
 
@@ -103,6 +110,27 @@ LLM_MODEL=deepseek-chat
 ```
 
 Never put API keys in the Angular frontend.
+
+**Verify after deploy:**
+
+```text
+https://your-backend.onrender.com/api/stories
+```
+
+You should get JSON (e.g. Ashbitten). If that works, set `NG_APP_API_URL` on Vercel to the same backend URL.
+
+#### Alternative: native Java build (no Docker)
+
+If Render offers Java 21 natively for your account:
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `backend` |
+| Build Command | `mvn package -DskipTests` |
+| Start Command | `java -jar target/quarkus-app/quarkus-run.jar` |
+| `ROLEPLAY_DATA_DIR` | `../data` |
+
+Docker is recommended because it bundles `data/` reliably.
 
 ### Connect frontend → backend
 

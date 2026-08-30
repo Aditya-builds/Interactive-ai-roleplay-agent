@@ -1,16 +1,13 @@
 services:
   - type: web
     name: interactive-ai-roleplay-backend
-    runtime: java
-    rootDir: backend
-    buildCommand: mvn package -DskipTests
-    startCommand: java -jar target/quarkus-app/quarkus-run.jar
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
     envVars:
-      - key: JAVA_VERSION
-        value: "21"
       - key: OPENAI_API_KEY
         sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: ROLEPLAY_DATA_DIR
-        value: ../data
+        value: /data
