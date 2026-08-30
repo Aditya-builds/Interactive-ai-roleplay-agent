@@ -69,7 +69,7 @@ backend/   →  Render   (Quarkus API)
 **Environment variable (Vercel):**
 
 ```text
-NG_APP_API_URL=https://your-backend.onrender.com
+NG_APP_API_URL=https://interactive-ai-roleplay-backend.onrender.com
 ```
 
 No trailing slash. The build script writes this into `environment.prod.ts` automatically.
@@ -114,7 +114,7 @@ Never put API keys in the Angular frontend.
 **Verify after deploy:**
 
 ```text
-https://your-backend.onrender.com/api/stories
+https://interactive-ai-roleplay-backend.onrender.com/api/stories
 ```
 
 You should get JSON (e.g. Ashbitten). If that works, set `NG_APP_API_URL` on Vercel to the same backend URL.

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const apiUrl = process.env.NG_APP_API_URL || 'https://YOUR-BACKEND.onrender.com';
+const apiUrl = process.env.NG_APP_API_URL || 'https://interactive-ai-roleplay-backend.onrender.com';
 const target = path.join(__dirname, '..', 'src', 'environments', 'environment.prod.ts');
 
 const contents = `export const environment = {
