@@ -14,4 +14,6 @@ export class MessageListComponent {
   @Input({ required: true }) messages: Message[] = [];
   @Input({ required: true }) characterName!: string;
   @Input() characterImageUrl = '';
+  @Input() playerName = 'You';
+  @Input() playerImageUrl = '';
 }

@@ -14,4 +14,6 @@ export class MessageBubbleComponent {
   @Input({ required: true }) message!: Message;
   @Input({ required: true }) characterName!: string;
   @Input() characterImageUrl = '';
+  @Input() playerName = 'You';
+  @Input() playerImageUrl = '';
 }

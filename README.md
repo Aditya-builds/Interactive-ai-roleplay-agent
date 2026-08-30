@@ -48,6 +48,66 @@ npm start
 
 Frontend runs at http://localhost:4200 and proxies `/api` to the backend.
 
+## Deployment
+
+This repo deploys as **two separate services** — do not deploy the whole monorepo as one Vercel project.
+
+```text
+frontend/  →  Vercel   (Angular static site)
+backend/   →  Render   (Quarkus API)
+```
+
+### Frontend (Vercel)
+
+1. Import `Aditya-builds/Interactive-ai-roleplay-agent` on Vercel
+2. Set **Root Directory** to `frontend`
+3. Framework: **Angular**
+4. Build Command: `npm run build`
+5. Output Directory: `dist/frontend`
+6. Install Command: `npm ci`
+
+**Environment variable (Vercel):**
+
+```text
+NG_APP_API_URL=https://your-backend.onrender.com
+```
+
+No trailing slash. The build script writes this into `environment.prod.ts` automatically.
+
+Local dev uses relative `/api` URLs with the dev proxy — no env var needed.
+
+### Backend (Render)
+
+Use the included `render.yaml` blueprint, or create a **Web Service** manually:
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `backend` |
+| Build Command | `mvn package -DskipTests` |
+| Start Command | `java -jar target/quarkus-app/quarkus-run.jar` |
+
+**Environment variables (Render):**
+
+```text
+OPENAI_API_KEY=your_key
+CORS_ORIGINS=https://your-app.vercel.app
+ROLEPLAY_DATA_DIR=../data
+```
+
+For DeepSeek instead of OpenAI:
+
+```text
+LLM_API_KEY=your_key
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+Never put API keys in the Angular frontend.
+
+### Connect frontend → backend
+
+After Render deploys, copy the backend URL into Vercel's `NG_APP_API_URL` and redeploy the frontend.
+
 ## Usage
 
 1. Open http://localhost:4200

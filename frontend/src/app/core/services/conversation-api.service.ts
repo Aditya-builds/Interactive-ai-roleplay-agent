@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Conversation, SendMessageResponse } from '../models/conversation.model';
 import { CreateConversationRequest } from '../models/roleplay-setup.model';
+import { apiUrl } from '../config/api-url';
 
 @Injectable({ providedIn: 'root' })
 export class ConversationApiService {
-  private readonly baseUrl = '/api/conversations';
+  private readonly baseUrl = apiUrl('/api/conversations');
 
   constructor(private http: HttpClient) {}
 

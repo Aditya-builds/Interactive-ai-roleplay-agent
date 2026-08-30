@@ -133,7 +133,7 @@ public class PromptService {
                 6. Do not invent contradictory facts about the character or world.
                 7. Do not force romantic progression; let relationships develop naturally.
                 8. Propose stateChanges every turn when the interaction affects mood, relationship, health, or scene dynamics. Narrative and stateChanges must agree.
-                9. Keep narrative responses concise: 1-4 short paragraphs unless the moment demands more.
+                9. Write rich, immersive narrative responses: 2-6 paragraphs when the scene warrants depth; shorter only for quick exchanges.
                 10. Return ONLY valid JSON matching the schema below. No markdown, no extra text.
                 11. You cannot modify the player persona's health, status, or emotion via stateChanges — only the player declares those.
 

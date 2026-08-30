@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -6,8 +6,13 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="portrait" [class.portrait-sm]="size === 'sm'" [class.portrait-md]="size === 'md'">
-      @if (src && !failed) {
+    <div
+      class="portrait"
+      [class.portrait-xs]="size === 'xs'"
+      [class.portrait-sm]="size === 'sm'"
+      [class.portrait-md]="size === 'md'"
+    >
+      @if (hasImage) {
         <img
           [src]="src"
           [alt]="alt || name"
@@ -45,7 +50,7 @@ import { CommonModule } from '@angular/common';
       justify-content: center;
       width: 100%;
       height: 100%;
-      background: linear-gradient(160deg, #1a2030 0%, #12161d 100%);
+      background: #151922;
     }
 
     .initial {
@@ -55,6 +60,16 @@ import { CommonModule } from '@angular/common';
       color: var(--text-muted, #6b7280);
       text-transform: uppercase;
       user-select: none;
+    }
+
+    .portrait-xs {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      max-height: 100px;
+    }
+
+    .portrait-xs .initial {
+      font-size: 1.1rem;
     }
 
     .portrait-sm {
@@ -75,21 +90,29 @@ import { CommonModule } from '@angular/common';
     :host(.portrait-lg) .portrait {
       width: 100%;
       aspect-ratio: 3 / 4;
-      max-height: 180px;
+      max-height: 160px;
     }
 
     :host(.portrait-lg) .initial {
-      font-size: 2.25rem;
+      font-size: 2rem;
     }
   `]
 })
-export class ActorPortraitComponent {
+export class ActorPortraitComponent implements OnChanges {
   @Input() src?: string | null;
   @Input() alt = '';
   @Input() name = '';
-  @Input() size: 'sm' | 'md' | 'lg' = 'md';
+  @Input() size: 'xs' | 'sm' | 'md' | 'lg' = 'md';
 
   failed = false;
+
+  ngOnChanges(): void {
+    this.failed = false;
+  }
+
+  get hasImage(): boolean {
+    return !!this.src?.trim() && !this.failed;
+  }
 
   get initial(): string {
     const trimmed = this.name?.trim();

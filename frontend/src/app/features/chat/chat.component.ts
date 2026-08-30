@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subscription, switchMap } from 'rxjs';
 import { ConversationApiService } from '../../core/services/conversation-api.service';
 import { CharacterApiService } from '../../core/services/character-api.service';
+import { PersonaApiService } from '../../core/services/roleplay-setup-api.service';
 import {
   CharacterRuntimeState,
   Conversation,
@@ -40,6 +41,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   characterId = '';
   characterName = '';
   characterImageUrl = '';
+  playerName = 'You';
+  playerImageUrl = '';
   scene: Scene | null = null;
   characterState: CharacterRuntimeState | null = null;
   playerPersonaId?: string;
@@ -56,7 +59,8 @@ export class ChatComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private conversationApi: ConversationApiService,
-    private characterApi: CharacterApiService
+    private characterApi: CharacterApiService,
+    private personaApi: PersonaApiService
   ) {}
 
   ngOnInit(): void {
@@ -89,6 +93,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         this.applyConversation(conversation);
         this.loading = false;
         this.loadCharacterInfo(conversation.characterId);
+        this.loadPlayerPersonaInfo(conversation.playerPersonaId);
         this.scrollToBottom();
       },
       error: () => {
@@ -103,6 +108,25 @@ export class ChatComponent implements OnInit, OnDestroy {
       next: (detail) => {
         this.characterName = detail.character.name;
         this.characterImageUrl = detail.character.imageUrl ?? '';
+      }
+    });
+  }
+
+  loadPlayerPersonaInfo(playerPersonaId?: string): void {
+    if (!playerPersonaId) {
+      this.playerName = 'You';
+      this.playerImageUrl = '';
+      return;
+    }
+
+    this.personaApi.getPersona(playerPersonaId).subscribe({
+      next: (persona) => {
+        this.playerName = persona.name;
+        this.playerImageUrl = persona.imageUrl ?? '';
+      },
+      error: () => {
+        this.playerName = 'You';
+        this.playerImageUrl = '';
       }
     });
   }
@@ -198,6 +222,8 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.scene = null;
     this.characterState = null;
     this.playerPersonaId = undefined;
+    this.playerName = 'You';
+    this.playerImageUrl = '';
     this.relationships = [];
     this.sendError = false;
     this.pendingMessage = '';
