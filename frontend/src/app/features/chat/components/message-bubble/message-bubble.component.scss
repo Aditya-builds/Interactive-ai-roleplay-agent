@@ -19,6 +19,16 @@
   margin-top: 0.15rem;
 }
 
+.bubble-avatar {
+  margin-top: 0.15rem;
+}
+
+.bubble-avatar .portrait {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
 .user-avatar {
   display: flex;
   align-items: center;

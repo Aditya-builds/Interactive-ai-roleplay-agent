@@ -4,7 +4,9 @@ import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.model.CharacterListEntry;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.ConversationSummary;
+import com.aditya.roleplay.model.PlayerPersona;
 import com.aditya.roleplay.model.RoleplayCharacter;
+import com.aditya.roleplay.model.Story;
 import com.aditya.roleplay.model.World;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -62,12 +64,21 @@ public class JsonStorageService {
     }
 
     public Optional<RoleplayCharacter> loadCharacter(String id) {
-        Path file = dataPath.resolve(id).resolve(id + ".json");
-        if (!Files.exists(file)) {
+        Path legacy = dataPath.resolve(id).resolve(id + ".json");
+        if (Files.exists(legacy)) {
+            try {
+                return Optional.of(objectMapper.readValue(legacy.toFile(), RoleplayCharacter.class));
+            } catch (IOException e) {
+                throw new RoleplayException("Failed to load character: " + id, "STORAGE_ERROR", 500);
+            }
+        }
+
+        Path structured = dataPath.resolve("characters").resolve(id + ".json");
+        if (!Files.exists(structured)) {
             return Optional.empty();
         }
         try {
-            return Optional.of(objectMapper.readValue(file.toFile(), RoleplayCharacter.class));
+            return Optional.of(objectMapper.readValue(structured.toFile(), RoleplayCharacter.class));
         } catch (IOException e) {
             throw new RoleplayException("Failed to load character: " + id, "STORAGE_ERROR", 500);
         }
@@ -83,14 +94,65 @@ public class JsonStorageService {
     }
 
     public Optional<World> loadWorld(String id) {
-        Path file = dataPath.resolve(id).resolve(id + ".json");
+        Path structured = dataPath.resolve("worlds").resolve(id + ".json");
+        if (Files.exists(structured)) {
+            try {
+                return Optional.of(objectMapper.readValue(structured.toFile(), World.class));
+            } catch (IOException e) {
+                throw new RoleplayException("Failed to load world: " + id, "STORAGE_ERROR", 500);
+            }
+        }
+
+        Path legacy = dataPath.resolve(id).resolve(id + ".json");
+        if (!Files.exists(legacy)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(objectMapper.readValue(legacy.toFile(), World.class));
+        } catch (IOException e) {
+            throw new RoleplayException("Failed to load world: " + id, "STORAGE_ERROR", 500);
+        }
+    }
+
+    public List<PlayerPersona> loadPersonas() {
+        List<String> ids = readStringIdList(dataPath.resolve("personas.json"));
+        List<PlayerPersona> personas = new ArrayList<>();
+        for (String id : ids) {
+            loadPersona(id).ifPresent(personas::add);
+        }
+        return personas;
+    }
+
+    public Optional<PlayerPersona> loadPersona(String id) {
+        Path file = dataPath.resolve("personas").resolve(id + ".json");
         if (!Files.exists(file)) {
             return Optional.empty();
         }
         try {
-            return Optional.of(objectMapper.readValue(file.toFile(), World.class));
+            return Optional.of(objectMapper.readValue(file.toFile(), PlayerPersona.class));
         } catch (IOException e) {
-            throw new RoleplayException("Failed to load world: " + id, "STORAGE_ERROR", 500);
+            throw new RoleplayException("Failed to load persona: " + id, "STORAGE_ERROR", 500);
+        }
+    }
+
+    public List<Story> loadStories() {
+        List<String> ids = readStringIdList(dataPath.resolve("stories.json"));
+        List<Story> stories = new ArrayList<>();
+        for (String id : ids) {
+            loadStory(id).ifPresent(stories::add);
+        }
+        return stories;
+    }
+
+    public Optional<Story> loadStory(String id) {
+        Path file = dataPath.resolve("stories").resolve(id + ".json");
+        if (!Files.exists(file)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(objectMapper.readValue(file.toFile(), Story.class));
+        } catch (IOException e) {
+            throw new RoleplayException("Failed to load story: " + id, "STORAGE_ERROR", 500);
         }
     }
 

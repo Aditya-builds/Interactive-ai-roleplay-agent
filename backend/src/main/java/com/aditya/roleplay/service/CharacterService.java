@@ -50,8 +50,15 @@ public class CharacterService {
     }
 
     public Set<String> allowedRelationshipTargets(String worldId, String conversationCharacterId) {
+        return allowedRelationshipTargets(worldId, conversationCharacterId, null);
+    }
+
+    public Set<String> allowedRelationshipTargets(String worldId, String conversationCharacterId, String playerPersonaId) {
         Set<String> targets = new HashSet<>();
         targets.add("user");
+        if (playerPersonaId != null && !playerPersonaId.isBlank()) {
+            targets.add(playerPersonaId);
+        }
         for (RoleplayCharacter character : storage.loadCharacters()) {
             if (worldId.equals(character.worldId()) && !character.id().equals(conversationCharacterId)) {
                 targets.add(character.id());

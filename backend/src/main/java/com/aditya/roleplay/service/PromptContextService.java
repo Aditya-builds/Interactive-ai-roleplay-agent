@@ -1,7 +1,9 @@
 package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.model.Conversation;
+import com.aditya.roleplay.model.PlayerPersona;
 import com.aditya.roleplay.model.Relationship;
+import com.aditya.roleplay.model.Story;
 import com.aditya.roleplay.model.StoryEvent;
 import com.aditya.roleplay.model.StoryMemoryEntry;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,9 +24,27 @@ public class PromptContextService {
     @ConfigProperty(name = "roleplay.prompt.important-memories-count", defaultValue = "8")
     int importantMemoriesCount;
 
-    public String buildTurnContext(Conversation conversation, String latestUserMessage, Set<String> allowedRelationshipTargets) {
+    public String buildTurnContext(
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets) {
+        return buildTurnContext(conversation, latestUserMessage, allowedRelationshipTargets, null, null);
+    }
+
+    public String buildTurnContext(
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story) {
+
+        String playerName = playerPersona != null ? playerPersona.name() : "the player";
+
         return """
-                CURRENT SITUATION
+                CURRENT SCENE
+                %s
+
+                %s CURRENT STATE
                 %s
 
                 RECENT STORY EVENTS
@@ -33,24 +53,52 @@ public class PromptContextService {
                 IMPORTANT MEMORIES
                 %s
 
-                RELATIONSHIPS
+                RELATIONSHIPS (%s's perspective — directional, not mutual)
                 %s
 
-                USER MESSAGE
+                RECENT CONVERSATION
+                (see message history above)
+
+                PLAYER ACTION
                 %s
 
-                REMINDER: If your response describes %s's mood or the scene dynamic differently from the CURRENT SITUATION above, include matching stateChanges (EMOTION, STATUS, currentSituation, RELATIONSHIP) in your JSON.
+                REMINDER: You control %s only. Never write for %s.
+                If your response describes %s's mood or the scene dynamic differently from above, include matching stateChanges in your JSON.
                 Return the structured JSON turn result now. Narrative goes in "response" only.
                 """.formatted(
-                formatCurrentSituation(conversation),
+                formatCurrentSituation(conversation, playerPersona),
+                conversation.characterId(),
+                formatCharacterState(conversation),
                 formatRecentEvents(conversation),
                 formatImportantMemories(conversation),
+                conversation.characterId(),
                 formatRelationships(conversation, allowedRelationshipTargets),
                 latestUserMessage,
+                conversation.characterId(),
+                playerName,
                 conversation.characterId());
     }
 
-    private String formatCurrentSituation(Conversation conversation) {
+    private String formatCharacterState(Conversation conversation) {
+        var runtime = conversation.characterState();
+        if (runtime == null) {
+            return "Unknown";
+        }
+        var health = runtime.health() != null ? runtime.health() : new com.aditya.roleplay.model.CharacterHealth(100, 100);
+        return """
+                Health: %d/%d
+                Location: %s
+                Status: %s
+                Emotion: %s
+                """.formatted(
+                health.current(),
+                health.max(),
+                runtime.location() != null ? runtime.location() : "unknown",
+                runtime.status() != null ? runtime.status() : "none",
+                runtime.emotion() != null ? runtime.emotion() : "none").stripTrailing();
+    }
+
+    private String formatCurrentSituation(Conversation conversation, PlayerPersona playerPersona) {
         var scene = conversation.scene();
         var runtime = conversation.characterState();
         var health = runtime != null && runtime.health() != null
@@ -64,10 +112,11 @@ public class PromptContextService {
         String npcLocation = runtime != null && runtime.location() != null ? runtime.location() : scene.location();
         String userLocation = scene.userLocation();
         String situation = scene.currentSituation() != null ? scene.currentSituation() : "none";
+        String playerLabel = playerPersona != null ? playerPersona.name() : "Player";
 
         return """
                 NPC location: %s
-                User location: %s
+                %s location: %s
                 Time: %s
                 Present with NPC: %s
                 Situation: %s
@@ -77,6 +126,7 @@ public class PromptContextService {
                 Emotion: %s
                 """.formatted(
                 npcLocation,
+                playerLabel,
                 userLocation,
                 scene.time(),
                 present,
@@ -137,11 +187,16 @@ public class PromptContextService {
             return "- (none tracked)";
         }
 
+        String focalId = conversation.characterId();
         return conversation.relationships().stream()
-                .filter(rel -> allowedRelationshipTargets.contains(rel.targetId()) || "user".equals(rel.targetId()))
+                .filter(rel -> rel.sourceId() == null || focalId.equals(rel.sourceId()))
+                .filter(rel -> allowedRelationshipTargets.contains(rel.targetId())
+                        || "user".equals(rel.targetId())
+                        || conversation.resolvedPlayerPersonaId().equals(rel.targetId()))
                 .map(rel -> """
-                        With %s: trust %d, respect %d, affection %d, familiarity %d, suspicion %d
+                        %s → %s: trust %d, respect %d, affection %d, familiarity %d, suspicion %d
                         """.formatted(
+                        focalId,
                         rel.targetId(),
                         rel.trust(),
                         rel.respect(),

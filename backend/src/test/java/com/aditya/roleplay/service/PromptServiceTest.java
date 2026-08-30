@@ -62,6 +62,6 @@ class PromptServiceTest {
 
         assertTrue(historyMessages <= 20, "Should not exceed configured max-history-messages (20 in test profile)");
         assertEquals(20, historyMessages, "Should include exactly the last 20 transcript messages");
-        assertTrue(request.messages().stream().anyMatch(m -> m.content().contains("CURRENT SITUATION")));
+        assertTrue(request.messages().stream().anyMatch(m -> m.content().contains("CURRENT SCENE")));
     }
 }

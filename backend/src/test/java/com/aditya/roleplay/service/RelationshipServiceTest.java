@@ -23,7 +23,7 @@ class RelationshipServiceTest {
                 "user",
                 "trust",
                 StateChangeOperation.INCREASE,
-                "5")).get(0);
+                "5"), "aurora").get(0);
 
         assertEquals(45, updated.trust());
     }
@@ -37,7 +37,7 @@ class RelationshipServiceTest {
                 "user",
                 "respect",
                 StateChangeOperation.DECREASE,
-                "3")).get(0);
+                "3"), "aurora").get(0);
 
         assertEquals(47, updated.respect());
     }
@@ -51,7 +51,7 @@ class RelationshipServiceTest {
                 "user",
                 "trust",
                 StateChangeOperation.INCREASE,
-                "10")).get(0);
+                "10"), "aurora").get(0);
 
         assertEquals(100, updated.trust());
     }
@@ -65,7 +65,7 @@ class RelationshipServiceTest {
                 "user",
                 "suspicion",
                 StateChangeOperation.DECREASE,
-                "10")).get(0);
+                "10"), "aurora").get(0);
 
         assertEquals(0, updated.suspicion());
     }
@@ -77,7 +77,7 @@ class RelationshipServiceTest {
                 "laxus",
                 "trust",
                 StateChangeOperation.INCREASE,
-                "4")).get(0);
+                "4"), "aurora").get(0);
 
         assertEquals("laxus", updated.targetId());
         assertEquals(44, updated.trust());

@@ -29,7 +29,7 @@ public class ConversationResource {
 
     @POST
     public Conversation createConversation(CreateConversationRequest request) {
-        return conversationService.createConversation(request.characterId());
+        return conversationService.create(request);
     }
 
     @GET

@@ -1,49 +1,253 @@
-<div class="select-page">
-  <header class="hero">
-    <span class="hero-label">AI Roleplay</span>
-    <h1>Choose your story</h1>
-    <p>Select a character to begin a conversation.</p>
-  </header>
-
-  @if (loadError && !loading) {
-    <div class="error-panel">
-      <p>Unable to load characters.</p>
-      <button type="button" class="retry-btn" (click)="loadCharacters()">Try Again</button>
-    </div>
-  }
-
-  @if (loading) {
-    <app-loading-spinner label="Loading characters..." />
-  } @else if (!loadError) {
-    <div class="character-grid">
-      @for (character of characters; track character.id) {
-        <article class="character-card">
-          <div class="card-image">
-            @if (character.imageUrl) {
-              <img [src]="character.imageUrl" [alt]="character.name" />
-            } @else {
-              <div class="avatar-placeholder">{{ character.name.charAt(0) }}</div>
-            }
-          </div>
-          <div class="card-body">
-            <h2>{{ character.name }}</h2>
-            <p class="personality">{{ personalitySummary(character) }}</p>
-            <p class="background">{{ character.background }}</p>
-            <button
-              type="button"
-              class="start-btn"
-              [disabled]="starting"
-              (click)="startConversation(character)"
-            >
-              Start conversation
-            </button>
-          </div>
-        </article>
-      }
-    </div>
-  }
-
-  @if (starting) {
-    <app-loading-spinner label="Starting conversation..." [inline]="true" />
-  }
-</div>
+<div class="home">
+  <header class="site-header">
+    <span class="brand">Roleplay</span>
+    <button type="button" class="nav-link" disabled aria-disabled="true">My Stories</button>
+  </header>
+
+  <main class="home-main">
+    <section class="hero">
+      <p class="hero-eyebrow">Enter a living story</p>
+      <h1 class="hero-title">
+        Choose a world. Choose who you are.
+        <span class="hero-sub">Then see where the story takes you.</span>
+      </h1>
+    </section>
+
+    @if (loadError && !loading) {
+      <div class="state-panel error">
+        <p>We couldn't load stories right now. Check your connection and try again.</p>
+        <button type="button" class="btn-ghost" (click)="loadSetupData()">Try again</button>
+      </div>
+    }
+
+    @if (startError) {
+      <div class="state-panel error">
+        <p>Something went wrong starting your session. Please try again.</p>
+      </div>
+    }
+
+    @if (loading) {
+      <div class="state-panel loading">
+        <app-loading-spinner label="Loading stories..." [inline]="true" />
+      </div>
+    } @else if (!loadError) {
+      @if (selectedStory) {
+        <nav class="flow-steps" aria-label="Setup progress">
+          <span class="step" [class.active]="currentStep() >= 1" [class.done]="currentStep() > 1">
+            <span class="step-num">1</span> Story
+          </span>
+          <span class="step-sep" aria-hidden="true"></span>
+          <span class="step" [class.active]="currentStep() >= 2" [class.done]="currentStep() > 2">
+            <span class="step-num">2</span> Persona
+          </span>
+          <span class="step-sep" aria-hidden="true"></span>
+          <span class="step" [class.active]="currentStep() >= 3" [class.done]="currentStep() > 3">
+            <span class="step-num">3</span> AI Character
+          </span>
+        </nav>
+      } @else {
+        <p class="flow-hint">Select a story below to begin setup.</p>
+      }
+
+      <section class="section stories-section">
+        <div class="section-head">
+          <h2>Stories</h2>
+          <p class="section-desc">Pick the world you want to enter.</p>
+        </div>
+
+        @if (stories.length === 0) {
+          <div class="state-panel empty">
+            <p>No stories available yet.</p>
+          </div>
+        } @else {
+          <div class="story-list">
+            @for (story of stories; track story.id) {
+              <button
+                type="button"
+                class="story-card"
+                [class.selected]="selectedStory?.id === story.id"
+                (click)="selectStory(story)"
+              >
+                <div class="story-card-accent" aria-hidden="true"></div>
+                <div class="story-card-content">
+                  <div class="story-card-text">
+                    <span class="story-title">{{ story.title }}</span>
+                    <p class="story-blurb">{{ storyBlurb(story) }}</p>
+                    <div class="story-tag-row">
+                      @for (tag of storyTagList(story); track tag) {
+                        <span class="tag-pill">{{ tag }}</span>
+                      }
+                    </div>
+                  </div>
+                  @if (storyCharacters(story).length > 0) {
+                    <div class="story-preview" aria-hidden="true">
+                      @for (character of storyCharacters(story); track character.id) {
+                        <app-actor-portrait
+                          class="story-preview-portrait"
+                          [src]="character.imageUrl"
+                          [name]="character.name"
+                          [alt]="''"
+                          size="md"
+                        />
+                      }
+                    </div>
+                  }
+                </div>
+                <div class="story-card-footer">
+                  @if (selectedStory?.id === story.id) {
+                    <span class="story-cta selected">Selected — choose your persona</span>
+                  } @else {
+                    <span class="story-cta">Begin story</span>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      @if (selectedStory) {
+        <section class="section personas-section setup-panel">
+          <div class="section-head">
+            <span class="step-label">Step 2</span>
+            <h2>Your Persona</h2>
+            <p class="section-desc">This is who <em>you</em> are in the story.</p>
+          </div>
+
+          @if (personasForStory().length === 0) {
+            <div class="state-panel empty">
+              <p>No personas available for this story.</p>
+            </div>
+          } @else {
+            <div class="persona-grid">
+              @for (persona of personasForStory(); track persona.id) {
+                <button
+                  type="button"
+                  class="actor-card persona-card"
+                  [class.selected]="selectedPersona?.id === persona.id"
+                  (click)="selectPersona(persona)"
+                >
+                  <app-actor-portrait
+                    class="portrait-lg"
+                    [src]="persona.imageUrl"
+                    [name]="persona.name"
+                    [alt]="persona.name + ' portrait'"
+                    size="md"
+                  />
+                  <div class="card-meta">
+                    <span class="card-name">{{ persona.name }}</span>
+                    <span class="card-traits">{{ personalitySummary(persona.profile.personality) }}</span>
+                    <span class="card-badge player">Player Persona</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (selectedStory && selectedPersona) {
+        <section class="section characters-section setup-panel">
+          <div class="section-head">
+            <span class="step-label">Step 3</span>
+            <h2>Characters you'll meet</h2>
+            <p class="section-desc">AI-controlled characters in this story.</p>
+          </div>
+
+          @if (charactersForStory().length === 0) {
+            <div class="state-panel empty">
+              <p>No AI characters available for this story.</p>
+            </div>
+          } @else {
+            <div class="character-grid">
+              @for (character of charactersForStory(); track character.id) {
+                <button
+                  type="button"
+                  class="actor-card character-card"
+                  [class.selected]="selectedCharacter?.id === character.id"
+                  (click)="selectCharacter(character)"
+                >
+                  <app-actor-portrait
+                    [src]="character.imageUrl"
+                    [name]="character.name"
+                    [alt]="character.name + ' portrait'"
+                    size="md"
+                  />
+                  <div class="card-meta">
+                    <span class="card-name">{{ character.name }}</span>
+                    <span class="card-traits">{{ personalitySummary(character.personality) }}</span>
+                    <span class="card-badge ai">AI Character</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (legacyCharacters().length > 0 && !selectedStory) {
+        <section class="section quick-section">
+          <button type="button" class="quick-toggle" (click)="quickStartOpen = !quickStartOpen">
+            <span>Quick start</span>
+            <span class="quick-toggle-hint">Skip story setup</span>
+            <span class="chevron" [class.open]="quickStartOpen">›</span>
+          </button>
+          @if (quickStartOpen) {
+            <p class="section-desc quick-desc">Talk to an AI character without a predefined story.</p>
+            <div class="character-grid compact">
+              @for (character of legacyCharacters(); track character.id) {
+                <article class="actor-card character-card static">
+                  <app-actor-portrait
+                    [src]="character.imageUrl"
+                    [name]="character.name"
+                    [alt]="character.name + ' portrait'"
+                    size="md"
+                  />
+                  <div class="card-meta">
+                    <span class="card-name">{{ character.name }}</span>
+                    <span class="card-traits">{{ personalitySummary(character.personality) }}</span>
+                    <span class="card-badge ai">AI Character</span>
+                    <button
+                      type="button"
+                      class="btn-inline"
+                      [disabled]="starting"
+                      (click)="startLegacyConversation(character)"
+                    >
+                      Start conversation
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+      }
+    }
+  </main>
+
+  @if (canStartStorySession()) {
+    <footer class="start-bar">
+      <div class="start-bar-inner">
+        <div class="start-summary">
+          <span class="summary-label">Ready to play</span>
+          <span class="summary-text">
+            {{ selectedStory!.title }} · {{ selectedPersona!.name }} · {{ selectedCharacter!.name }}
+          </span>
+        </div>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="starting"
+          (click)="startStorySession()"
+        >
+          @if (starting) {
+            Starting…
+          } @else {
+            Start Roleplay
+          }
+        </button>
+      </div>
+    </footer>
+  }
+</div>
+

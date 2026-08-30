@@ -1,4 +1,11 @@
 package com.aditya.roleplay.model;
 
-public record CreateConversationRequest(String characterId) {
+import java.util.List;
+
+public record CreateConversationRequest(
+        String characterId,
+        String playerPersonaId,
+        String storyId,
+        String focalCharacterId,
+        List<String> activeCharacterIds) {
 }

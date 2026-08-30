@@ -24,9 +24,13 @@
       } @else {
         @if (messages.length === 0) {
           <div class="empty-state">
-            @if (characterImageUrl) {
-              <img [src]="characterImageUrl" [alt]="characterName" class="empty-avatar" />
-            }
+            <app-actor-portrait
+              class="empty-portrait"
+              [src]="characterImageUrl"
+              [name]="characterName"
+              [alt]="characterName"
+              size="md"
+            />
             <h2>Begin your story with {{ characterName }}</h2>
             <p>Type dialogue or describe an action below to start the scene.</p>
           </div>
@@ -69,6 +73,7 @@
       [characterName]="characterName"
       [characterState]="characterState"
       [relationships]="relationships"
+      [playerPersonaId]="playerPersonaId"
     />
   }
 </div>

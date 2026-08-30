@@ -1,6 +1,7 @@
 package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.model.Scene;
+import com.aditya.roleplay.model.World;
 import com.aditya.roleplay.model.turn.StateChange;
 import com.aditya.roleplay.model.turn.StateChangeOperation;
 import com.aditya.roleplay.model.turn.StateChangeType;
@@ -59,6 +60,15 @@ public class StateChangeValidator {
             String conversationCharacterId,
             Set<String> allowedRelationshipTargets,
             Scene currentScene) {
+        return validateBatch(changes, conversationCharacterId, allowedRelationshipTargets, currentScene, null);
+    }
+
+    public ValidationResult validateBatch(
+            List<StateChange> changes,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets,
+            Scene currentScene,
+            World world) {
         if (changes == null || changes.isEmpty()) {
             return ValidationResult.accepted();
         }
@@ -68,7 +78,7 @@ public class StateChangeValidator {
 
         int totalRelationshipDelta = 0;
         for (StateChange change : changes) {
-            ValidationResult result = validate(change, conversationCharacterId, allowedRelationshipTargets, currentScene);
+            ValidationResult result = validate(change, conversationCharacterId, allowedRelationshipTargets, currentScene, world);
             if (!result.valid()) {
                 return result;
             }
@@ -87,7 +97,7 @@ public class StateChangeValidator {
             StateChange change,
             String conversationCharacterId,
             Set<String> allowedRelationshipTargets) {
-        return validate(change, conversationCharacterId, allowedRelationshipTargets, null);
+        return validate(change, conversationCharacterId, allowedRelationshipTargets, null, null);
     }
 
     public ValidationResult validate(
@@ -95,6 +105,15 @@ public class StateChangeValidator {
             String conversationCharacterId,
             Set<String> allowedRelationshipTargets,
             Scene currentScene) {
+        return validate(change, conversationCharacterId, allowedRelationshipTargets, currentScene, null);
+    }
+
+    public ValidationResult validate(
+            StateChange change,
+            String conversationCharacterId,
+            Set<String> allowedRelationshipTargets,
+            Scene currentScene,
+            World world) {
         if (change == null) {
             return ValidationResult.rejected("State change is null");
         }
@@ -116,9 +135,9 @@ public class StateChangeValidator {
 
         return switch (change.type()) {
             case RELATIONSHIP -> validateRelationship(change, allowedRelationshipTargets);
-            case SCENE -> validateScene(change, currentScene);
+            case SCENE -> validateScene(change, currentScene, world);
             case HEALTH -> validateHealth(change, conversationCharacterId);
-            case LOCATION -> validateLocation(change, conversationCharacterId);
+            case LOCATION -> validateLocation(change, conversationCharacterId, world);
             case STATUS -> validateStatus(change, conversationCharacterId);
             case EMOTION -> validateEmotion(change, conversationCharacterId);
         };
@@ -144,7 +163,7 @@ public class StateChangeValidator {
         return ValidationResult.accepted();
     }
 
-    private ValidationResult validateScene(StateChange change, Scene currentScene) {
+    private ValidationResult validateScene(StateChange change, Scene currentScene, World world) {
         if (!"scene".equals(change.targetId())) {
             return ValidationResult.rejected("Scene changes must use targetId 'scene'");
         }
@@ -155,8 +174,8 @@ public class StateChangeValidator {
             return ValidationResult.rejected("Scene changes only support SET");
         }
         if ((change.field().equals("location") || change.field().equals("userLocation"))
-                && !LOCATION_PATTERN.matcher(change.value()).matches()) {
-            return ValidationResult.rejected("Invalid scene location format");
+                && !isValidLocation(change.value(), world)) {
+            return ValidationResult.rejected("Invalid or unknown scene location: " + change.value());
         }
         if (change.field().equals("charactersPresent")) {
             return validateCharactersPresentValue(change.value(), currentScene);
@@ -170,7 +189,7 @@ public class StateChangeValidator {
         return ValidationResult.accepted();
     }
 
-    private ValidationResult validateLocation(StateChange change, String conversationCharacterId) {
+    private ValidationResult validateLocation(StateChange change, String conversationCharacterId, World world) {
         boolean validTarget = "user".equals(change.targetId())
                 || "scene".equals(change.targetId())
                 || conversationCharacterId.equals(change.targetId());
@@ -184,10 +203,20 @@ public class StateChangeValidator {
         if (!SET_ONLY_OPS.contains(change.operation())) {
             return ValidationResult.rejected("Location changes only support SET");
         }
-        if (!LOCATION_PATTERN.matcher(change.value()).matches()) {
-            return ValidationResult.rejected("Invalid location format");
+        if (!isValidLocation(change.value(), world)) {
+            return ValidationResult.rejected("Invalid or unknown location: " + change.value());
         }
         return ValidationResult.accepted();
+    }
+
+    private boolean isValidLocation(String locationId, World world) {
+        if (!LOCATION_PATTERN.matcher(locationId).matches()) {
+            return false;
+        }
+        if (world == null || world.locations() == null || world.locations().isEmpty()) {
+            return true;
+        }
+        return world.isValidLocation(locationId);
     }
 
     private ValidationResult validateHealth(StateChange change, String conversationCharacterId) {

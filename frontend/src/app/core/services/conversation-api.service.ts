@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Conversation, SendMessageResponse } from '../models/conversation.model';
+import { CreateConversationRequest } from '../models/roleplay-setup.model';
 
 @Injectable({ providedIn: 'root' })
 export class ConversationApiService {
@@ -9,8 +10,13 @@ export class ConversationApiService {
 
   constructor(private http: HttpClient) {}
 
-  createConversation(characterId: string): Observable<Conversation> {
-    return this.http.post<Conversation>(this.baseUrl, { characterId });
+  createConversation(request: CreateConversationRequest): Observable<Conversation> {
+    return this.http.post<Conversation>(this.baseUrl, request);
+  }
+
+  /** @deprecated Use createConversation with CreateConversationRequest */
+  createLegacyConversation(characterId: string): Observable<Conversation> {
+    return this.createConversation({ characterId });
   }
 
   getConversation(id: string): Observable<Conversation> {

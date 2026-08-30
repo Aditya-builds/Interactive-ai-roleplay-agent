@@ -9,5 +9,11 @@
     "id": "laxus",
     "name": "Laxus",
     "worldId": "fantasy"
+  },
+  {
+    "id": "runa",
+    "name": "Runa Ashlock",
+    "worldId": "shattered_world",
+    "imageUrl": "/characters/runa.png"
   }
 ]

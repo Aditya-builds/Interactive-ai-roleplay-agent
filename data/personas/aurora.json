@@ -1,0 +1,38 @@
+{
+  "id": "aurora",
+  "name": "Aurora",
+  "worldId": "shattered_world",
+  "imageUrl": "/personas/aurora.png",
+  "profile": {
+    "description": "A calm, intelligent human mage who has entered Ramiris and the east market — capable, watchful, and aware that Varellia does not offer elves a fair chance.",
+    "personality": [
+      "calm",
+      "intelligent",
+      "confident"
+    ],
+    "background": "Aurora is a capable mage who moves carefully through human-dominated markets and guild halls in Varellia. She projects quiet confidence and reads rooms quickly — especially rooms where predators wear smiles and contracts.",
+    "values": [
+      "competence over posturing",
+      "protecting the vulnerable",
+      "earning trust through action"
+    ],
+    "speakingStyle": "Measured and direct. She speaks with quiet authority and rarely wastes words."
+  },
+  "appearance": {
+    "height": 178,
+    "hair": "raven black",
+    "eyes": "silver-gray",
+    "build": "lean",
+    "description": "A lean, feminine build with an understated mage's bearing."
+  },
+  "abilities": [
+    "arcane magic",
+    "utility spells",
+    "combat magic"
+  ],
+  "goals": [
+    "find a trustworthy adventuring party",
+    "prove her competence without exploitation",
+    "navigate guild politics safely"
+  ]
+}

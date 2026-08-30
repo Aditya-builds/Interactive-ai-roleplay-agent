@@ -3,8 +3,10 @@ package com.aditya.roleplay.service;
 import com.aditya.roleplay.model.CharacterHealth;
 import com.aditya.roleplay.model.CharacterPresence;
 import com.aditya.roleplay.model.CharacterRuntimeState;
+import com.aditya.roleplay.model.PlayerPersona;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.Scene;
+import com.aditya.roleplay.model.Story;
 import com.aditya.roleplay.model.turn.StateChange;
 import com.aditya.roleplay.model.turn.StateChangeOperation;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -51,6 +53,38 @@ public class StoryStateService {
                 ? character.presence().defaultLocation()
                 : "unknown";
         return new CharacterRuntimeState(character.id(), health, location, null, null);
+    }
+
+    public CharacterRuntimeState createInitialCharacterStateForStory(Story story, RoleplayCharacter character) {
+        CharacterHealth health = character.health() != null
+                ? character.health()
+                : new CharacterHealth(100, 100);
+        String location = story.startingLocation() != null && !story.startingLocation().isBlank()
+                ? story.startingLocation()
+                : (character.presence() != null ? character.presence().defaultLocation() : "unknown");
+        return new CharacterRuntimeState(character.id(), health, location, null, "guarded");
+    }
+
+    public CharacterRuntimeState createInitialPlayerPersonaState(Story story, PlayerPersona persona) {
+        String location = story.startingLocation() != null ? story.startingLocation() : "unknown";
+        return new CharacterRuntimeState(persona.id(), new CharacterHealth(100, 100), location, "healthy", "calm");
+    }
+
+    public Scene createInitialSceneFromStory(Story story, RoleplayCharacter character, String playerPersonaId) {
+        String location = story.startingLocation() != null && !story.startingLocation().isBlank()
+                ? story.startingLocation()
+                : (character.presence() != null ? character.presence().defaultLocation() : "unknown");
+        String time = character.presence() != null ? character.presence().defaultTime() : "unknown";
+        String situation = story.openingNarrative() != null && !story.openingNarrative().isBlank()
+                ? "Opening scene — the story begins."
+                : character.name() + " is present.";
+        return new Scene(
+                location,
+                location,
+                time,
+                List.of(character.id(), "user"),
+                situation,
+                null);
     }
 
     /** Ensures NPC runtime location matches scene.location (NPC scene anchor). */

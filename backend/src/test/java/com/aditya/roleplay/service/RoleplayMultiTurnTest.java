@@ -130,7 +130,7 @@ class RoleplayMultiTurnTest {
         assertTrue(context.contains("attacked Aurora"));
         assertTrue(context.contains("forest"));
         assertTrue(context.contains("85/100"));
-        assertTrue(context.contains("With user: trust 45"));
+        assertTrue(context.contains("aurora → user: trust 45"));
         assertTrue(context.contains("struck Aurora"));
         assertEquals(11, afterTurn5.messages().size());
     }

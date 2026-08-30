@@ -1,0 +1,76 @@
+{
+  "id": "shattered_world",
+  "name": "Varellia",
+  "description": "Varellia is a land with borders drawn in blood and laws written in ash. It is not ruled by kings or empires — it is ruled by cruelty. Slavery is industry. Racism is governance. The Adventurer's Guild promises protection through contracts, but for non-humans the fine print is a collar waiting to close.",
+  "rules": [
+    "Magic exists and is regulated by Guild charters and city contracts.",
+    "Humans dominate political power; non-humans are born with a price tag.",
+    "Elves are highest-value stock — refined, graceful, exploited. Beastfolk are exotic and fertile. Orcs are sold in batches for bloodsport.",
+    "Non-humans only gain special Guild rights inside a registered party with a human. No human? Expendable. No party? Meat waiting for a collar.",
+    "Ramiris is a so-called neutral town — no open chains, but indentures, favors, and loopholes abound.",
+    "The Guild Union assigns adventurer ranks from F through SS."
+  ],
+  "races": [
+    "human",
+    "elf",
+    "beastfolk",
+    "orc"
+  ],
+  "factions": [
+    "Adventurer's Guild",
+    "Ramiris Trade Council",
+    "Northern Kingdoms",
+    "Slave Markets of the Borderlands"
+  ],
+  "locations": [
+    {
+      "id": "east_market_arch",
+      "name": "East Market Arch, Ramiris",
+      "description": "A worn stone arch at the edge of Ramiris's east market where recruiters, mercenaries, and the desperate gather. Runa keeps her sign here."
+    },
+    {
+      "id": "ramiris",
+      "name": "Ramiris",
+      "description": "A so-called neutral town — no slavery on paper, but indentures, favors, and contracts with enough loopholes to hang yourself in."
+    },
+    {
+      "id": "guild_board",
+      "name": "Guild Recruitment Hall",
+      "description": "A crowded guild hall filled with adventurers, recruitment notices, and the low hum of wary negotiation."
+    },
+    {
+      "id": "guild_hall",
+      "name": "Main Guild Hall",
+      "description": "The central hall where missions are posted, parties register, and rights are granted — or denied."
+    },
+    {
+      "id": "thal_lorien",
+      "name": "Thal'lorien",
+      "description": "A ruined elven border-village of ink, starlight, and songs — raided at dawn and emptied of everyone Runa loved."
+    },
+    {
+      "id": "forest",
+      "name": "Border Forest",
+      "description": "Dense woodland beyond the city walls, home to monsters, old roads, and the routes slavers use."
+    },
+    {
+      "id": "training_ground",
+      "name": "Guild Training Ground",
+      "description": "An open yard where adventurers spar and test their skills under Guild eyes."
+    }
+  ],
+  "systems": {
+    "adventurerRanking": {
+      "ranks": [
+        "F",
+        "E",
+        "D",
+        "C",
+        "B",
+        "A",
+        "S",
+        "SS"
+      ]
+    }
+  }
+}

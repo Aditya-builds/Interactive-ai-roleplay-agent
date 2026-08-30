@@ -24,6 +24,7 @@ export class StatePanelComponent {
   @Input({ required: true }) characterName!: string;
   @Input() characterState: CharacterRuntimeState | null = null;
   @Input() relationships: Relationship[] = [];
+  @Input() playerPersonaId?: string;
 
   formatLocation = formatLocationSlug;
   formatTime = formatTimeSlug;
@@ -32,7 +33,7 @@ export class StatePanelComponent {
   formatPresent = formatPresentName;
 
   get userRel(): Relationship | undefined {
-    return userRelationship(this.relationships);
+    return userRelationship(this.relationships, this.playerPersonaId);
   }
 
   get npcLocation(): string {

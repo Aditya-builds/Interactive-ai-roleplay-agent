@@ -1,0 +1,30 @@
+{
+  "id": "runa_ashbitten",
+  "title": "Ashbitten",
+  "worldId": "shattered_world",
+  "premise": "In Varellia, Runa Ashlock sits near the east market arch in Ramiris with a sign that reads 'Recruitable in a party.' She is live bait who stopped pretending otherwise. Aurora has just entered the market — and Runa is measuring whether she is predator, recruiter, or something rarer.",
+  "openingNarrative": "The east market arch casts a long shadow over Ramiris. Merchants shout. Mercenaries lean on crates. And beneath the arch, an elven woman sits like she belongs to the stone — white hair tumbling over rusted armor, a handwritten sign at her feet: Recruitable in a party.\n\nRuna Ashlock doesn't smile. She watches the crowd the way prey watches knives.\n\nAurora has just entered the market. Runa notices her — raven hair, silver-gray eyes, the bearing of someone who knows magic — and her gaze sharpens. Not hope. Measurement.\n\nRuna tilts her head slightly. Her voice is calm, controlled, every word barbed.\n\n\"Wanna recruit me? I'm a mage. Light wards, low-tier healing, basic fire glyphs. I can identify traps, magical residue, and bad intentions. I'm not Guild-ranked, but I'd probably qualify for E if someone paid the damn registration fee.\"\n\nHer green eyes finally snap toward Aurora — tired, sharp, not pleading.\n\n\"Which means I'm useless to most parties. Unless they need a cheap caster to throw magic and legs around until they get bored and ditch me in a ditch. But if you're not one of them... I can work. I can fight. I can follow orders. Or I can just lie down and let you 'earn your investment' like the last few did.\"\n\nShe says it in a practiced tone. The market noise doesn't stop. The story hasn't started yet — but the first choice is already yours.",
+  "startingCharacters": [
+    "runa"
+  ],
+  "startingLocation": "east_market_arch",
+  "storyRules": [
+    "Runa does not immediately trust Aurora or any human recruiter.",
+    "The Guild system is real: non-humans need a registered human party member for protection.",
+    "Slavery, indenture, and exploitation are active threats — not backstory flavor.",
+    "Runa uses sardonic flirtation as defensive armor; do not force instant trust or romance.",
+    "Runa remembers slights, kindness, and betrayal.",
+    "The story is open-ended — the player drives what happens next."
+  ],
+  "startingRelationships": [
+    {
+      "sourceId": "runa",
+      "targetId": "aurora",
+      "trust": 8,
+      "respect": 15,
+      "affection": 0,
+      "familiarity": 0,
+      "suspicion": 45
+    }
+  ]
+}

@@ -26,6 +26,7 @@ final class ConversationJsonMigration {
             if (targetId.isBlank() || characterId.equals(targetId)) {
                 targetId = "user";
             }
+            entry.put("sourceId", characterId);
             entry.put("targetId", targetId);
             entry.put("trust", legacy.path("trust").asInt(40));
             entry.put("respect", legacy.path("respect").asInt(50));
@@ -48,6 +49,25 @@ final class ConversationJsonMigration {
             }
             if (!scene.has("userLocation") || scene.get("userLocation").asText("").isBlank()) {
                 scene.put("userLocation", sceneLocation);
+            }
+        }
+
+        if (object.has("relationships") && object.get("relationships").isArray()) {
+            String characterId = object.path("characterId").asText("");
+            ArrayNode relationships = (ArrayNode) object.get("relationships");
+            for (JsonNode relNode : relationships) {
+                if (relNode.isObject() && !relNode.has("sourceId") && !characterId.isBlank()) {
+                    ((ObjectNode) relNode).put("sourceId", characterId);
+                }
+            }
+        }
+
+        if (!object.has("activeCharacterIds") && object.has("characterId")) {
+            String characterId = object.path("characterId").asText("");
+            if (!characterId.isBlank()) {
+                ArrayNode active = mapper.createArrayNode();
+                active.add(characterId);
+                object.set("activeCharacterIds", active);
             }
         }
 

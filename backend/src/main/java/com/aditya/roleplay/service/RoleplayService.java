@@ -8,14 +8,18 @@ import com.aditya.roleplay.llm.LlmResponse;
 import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
+import com.aditya.roleplay.model.PlayerPersona;
 import com.aditya.roleplay.model.Role;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.SendMessageResponse;
+import com.aditya.roleplay.model.Story;
 import com.aditya.roleplay.model.World;
+import com.aditya.roleplay.storage.JsonStorageService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,6 +33,15 @@ public class RoleplayService {
 
     @Inject
     CharacterService characterService;
+
+    @Inject
+    PlayerPersonaService personaService;
+
+    @Inject
+    StoryService storyService;
+
+    @Inject
+    JsonStorageService storage;
 
     @Inject
     PromptService promptService;
@@ -54,11 +67,16 @@ public class RoleplayService {
         World world = characterService.requireWorld(conversation.worldId());
         conversation = ensureRuntimeFields(conversation, character);
 
+        PlayerPersona playerPersona = loadPlayerPersona(conversation).orElse(null);
+        Story story = loadStory(conversation).orElse(null);
+
         Set<String> allowedRelationshipTargets = characterService.allowedRelationshipTargets(
                 conversation.worldId(),
-                conversation.characterId());
+                conversation.characterId(),
+                conversation.playerPersonaId());
 
-        LlmRequest llmRequest = promptService.build(character, world, conversation, trimmed, allowedRelationshipTargets);
+        LlmRequest llmRequest = promptService.build(
+                character, world, conversation, trimmed, allowedRelationshipTargets, playerPersona, story);
         LlmResponse llmResponse = llmClient.complete(llmRequest);
 
         if (!llmResponse.structuredParseSuccess() || llmResponse.turnResult() == null) {
@@ -83,7 +101,9 @@ public class RoleplayService {
                         conversation.memories()),
                 character,
                 turnResult,
-                allowedRelationshipTargets);
+                allowedRelationshipTargets,
+                conversation.resolvedPlayerPersonaId(),
+                world);
 
         Message assistantMessage = new Message(
                 UUID.randomUUID().toString(),
@@ -109,6 +129,20 @@ public class RoleplayService {
                 updatedState.scene(),
                 updatedState.characterState(),
                 updatedState.relationships());
+    }
+
+    private Optional<PlayerPersona> loadPlayerPersona(Conversation conversation) {
+        if (conversation.playerPersonaId() == null || conversation.playerPersonaId().isBlank()) {
+            return Optional.empty();
+        }
+        return storage.loadPersona(conversation.playerPersonaId());
+    }
+
+    private Optional<Story> loadStory(Conversation conversation) {
+        if (conversation.storyId() == null || conversation.storyId().isBlank()) {
+            return Optional.empty();
+        }
+        return storage.loadStory(conversation.storyId());
     }
 
     private Conversation ensureRuntimeFields(Conversation conversation, RoleplayCharacter character) {

@@ -55,6 +55,16 @@ public class StateChangeProcessor {
             RoleplayCharacter characterDefinition,
             LlmTurnResult turnResult,
             Set<String> allowedRelationshipTargets) {
+        return apply(state, characterDefinition, turnResult, allowedRelationshipTargets, "user", null);
+    }
+
+    public ConversationState apply(
+            ConversationState state,
+            RoleplayCharacter characterDefinition,
+            LlmTurnResult turnResult,
+            Set<String> allowedRelationshipTargets,
+            String playerPersonaId,
+            com.aditya.roleplay.model.World world) {
 
         ConversationState current = state.ensureCharacterState(characterDefinition);
         current = reconcileNpcLocation(current);
@@ -70,12 +80,17 @@ public class StateChangeProcessor {
             if (applied >= maxChangesPerTurn) {
                 break;
             }
-            StateChange normalized = normalizeChange(change, current.characterId());
+            if (isBlockedPlayerPersonaChange(change, playerPersonaId)) {
+                LOG.fine(() -> "Rejected player persona state change: " + change.type() + " on " + change.targetId());
+                continue;
+            }
+            StateChange normalized = normalizeChange(change, current.characterId(), playerPersonaId);
             StateChangeValidator.ValidationResult validation = validator.validate(
                     normalized,
                     current.characterId(),
                     allowedRelationshipTargets,
-                    scene);
+                    scene,
+                    world);
             if (!validation.valid()) {
                 LOG.fine(() -> "Rejected state change: " + validation.reason());
                 continue;
@@ -83,7 +98,8 @@ public class StateChangeProcessor {
 
             switch (normalized.type()) {
                 case RELATIONSHIP -> {
-                    relationships = relationshipService.applyStateChange(relationships, normalized);
+                    relationships = relationshipService.applyStateChange(
+                            relationships, normalized, current.characterId());
                     applied++;
                 }
                 case SCENE -> {
@@ -191,25 +207,39 @@ public class StateChangeProcessor {
                 location);
     }
 
-    private StateChange normalizeChange(StateChange change, String conversationCharacterId) {
+    private StateChange normalizeChange(StateChange change, String conversationCharacterId, String playerPersonaId) {
         if (change.type() == StateChangeType.LOCATION) {
-            if ("user".equals(change.targetId()) || "scene".equals(change.targetId())) {
-                return change;
-            }
-            if (conversationCharacterId.equals(change.targetId()) && "location".equals(change.field())) {
-                return change;
+            if (playerPersonaId != null && playerPersonaId.equals(change.targetId())) {
+                return new StateChange(
+                        change.type(),
+                        "user",
+                        change.field(),
+                        change.operation(),
+                        change.value());
             }
             return change;
         }
-        if (change.type() == StateChangeType.RELATIONSHIP && conversationCharacterId.equals(change.targetId())) {
-            return new StateChange(
-                    change.type(),
-                    "user",
-                    change.field(),
-                    change.operation(),
-                    change.value());
+        if (change.type() == StateChangeType.RELATIONSHIP) {
+            String targetId = change.targetId();
+            if ("user".equals(targetId) && playerPersonaId != null && !playerPersonaId.isBlank()) {
+                targetId = playerPersonaId;
+            }
+            if (conversationCharacterId.equals(change.targetId())) {
+                targetId = playerPersonaId != null && !playerPersonaId.isBlank() ? playerPersonaId : "user";
+            }
+            return new StateChange(change.type(), targetId, change.field(), change.operation(), change.value());
         }
         return change;
+    }
+
+    private boolean isBlockedPlayerPersonaChange(StateChange change, String playerPersonaId) {
+        if (change.type() == StateChangeType.RELATIONSHIP || change.type() == StateChangeType.SCENE) {
+            return false;
+        }
+        if ("user".equals(change.targetId())) {
+            return change.type() != StateChangeType.LOCATION;
+        }
+        return playerPersonaId != null && playerPersonaId.equals(change.targetId());
     }
 
     private boolean hasDuplicateMemory(List<StoryMemoryEntry> memories, String content) {

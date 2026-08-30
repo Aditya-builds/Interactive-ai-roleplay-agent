@@ -109,13 +109,18 @@
   color: var(--text-secondary);
 }
 
-.empty-avatar {
+.empty-portrait {
+  display: block;
+  width: 88px;
+  margin: 0 auto 1rem;
+}
+
+.empty-portrait .portrait {
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  object-fit: cover;
-  margin-bottom: 1rem;
-  border: 2px solid var(--border-subtle);
+  max-height: none;
+  aspect-ratio: 1;
 }
 
 .empty-state h2 {

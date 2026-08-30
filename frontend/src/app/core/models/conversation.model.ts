@@ -25,6 +25,7 @@ export interface CharacterRuntimeState {
 }
 
 export interface Relationship {
+  sourceId?: string;
   targetId: string;
   trust: number;
   respect: number;
@@ -49,7 +50,11 @@ export interface Conversation {
   worldId: string;
   createdAt: string;
   updatedAt: string;
+  playerPersonaId?: string;
+  storyId?: string;
+  activeCharacterIds?: string[];
   characterState?: CharacterRuntimeState;
+  playerPersonaState?: CharacterRuntimeState;
   scene: Scene;
   relationships: Relationship[];
   memories: StoryMemoryEntry[];
@@ -116,6 +121,15 @@ export function formatEmotionLabel(emotion: string | null | undefined): string {
   return emotion.charAt(0).toUpperCase() + emotion.slice(1);
 }
 
-export function userRelationship(relationships: Relationship[]): Relationship | undefined {
+export function userRelationship(
+  relationships: Relationship[],
+  playerPersonaId?: string
+): Relationship | undefined {
+  if (playerPersonaId) {
+    const personaRel = relationships.find(r => r.targetId === playerPersonaId);
+    if (personaRel) {
+      return personaRel;
+    }
+  }
   return relationships.find(r => r.targetId === 'user');
 }

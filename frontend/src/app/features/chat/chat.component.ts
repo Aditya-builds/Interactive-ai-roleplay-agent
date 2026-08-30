@@ -16,6 +16,7 @@ import { MessageListComponent } from './components/message-list/message-list.com
 import { MessageInputComponent } from './components/message-input/message-input.component';
 import { StatePanelComponent } from './components/state-panel/state-panel.component';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
+import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
 
 @Component({
   selector: 'app-chat',
@@ -26,7 +27,8 @@ import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-sp
     MessageListComponent,
     MessageInputComponent,
     StatePanelComponent,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    ActorPortraitComponent
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
@@ -40,6 +42,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   characterImageUrl = '';
   scene: Scene | null = null;
   characterState: CharacterRuntimeState | null = null;
+  playerPersonaId?: string;
   relationships: Relationship[] = [];
   messages: Message[] = [];
   loading = true;
@@ -164,7 +167,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private createNewConversation(): void {
-    this.conversationApi.createConversation(this.characterId).subscribe({
+    this.conversationApi.createLegacyConversation(this.characterId).subscribe({
       next: (conversation) => {
         this.restarting = false;
         this.router.navigate(['/chat', conversation.id]);
@@ -187,12 +190,14 @@ export class ChatComponent implements OnInit, OnDestroy {
         }
       : null;
     this.relationships = conversation.relationships.map(r => ({ ...r }));
+    this.playerPersonaId = conversation.playerPersonaId;
   }
 
   private resetView(): void {
     this.messages = [];
     this.scene = null;
     this.characterState = null;
+    this.playerPersonaId = undefined;
     this.relationships = [];
     this.sendError = false;
     this.pendingMessage = '';
