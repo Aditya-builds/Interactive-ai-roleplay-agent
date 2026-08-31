@@ -96,7 +96,7 @@
                       @for (character of storyCharacters(story); track character.id) {
                         <app-actor-portrait
                           class="story-face"
-                          [src]="character.imageUrl"
+                          [src]="actorImageUrl(character.imageUrl)"
                           [name]="character.name"
                           [alt]="''"
                           size="sm"
@@ -141,7 +141,7 @@
                 >
                   <app-actor-portrait
                     class="portrait-lg"
-                    [src]="persona.imageUrl"
+                    [src]="actorImageUrl(persona.imageUrl)"
                     [name]="persona.name"
                     [alt]="persona.name + ' portrait'"
                     size="md"
@@ -183,7 +183,7 @@
                   (click)="selectCharacter(character)"
                 >
                   <app-actor-portrait
-                    [src]="character.imageUrl"
+                    [src]="actorImageUrl(character.imageUrl)"
                     [name]="character.name"
                     [alt]="character.name + ' portrait'"
                     size="xs"
@@ -212,7 +212,7 @@
               @for (character of legacyCharacters(); track character.id) {
                 <article class="pick-card character-pick static">
                   <app-actor-portrait
-                    [src]="character.imageUrl"
+                    [src]="actorImageUrl(character.imageUrl)"
                     [name]="character.name"
                     [alt]="character.name + ' portrait'"
                     size="xs"

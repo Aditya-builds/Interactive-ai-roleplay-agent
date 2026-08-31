@@ -28,6 +28,12 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Guava 33.4+ uses VarHandle instead of sun.misc.Unsafe in AbstractFuture (JDK 24+ warnings). -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.4.8-jre</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -90,6 +96,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
+                    <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>

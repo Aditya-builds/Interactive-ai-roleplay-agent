@@ -10,6 +10,7 @@ import { PlayerPersona, Story } from '../../core/models/roleplay-setup.model';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
 import { ApiKeySettingsComponent } from '../../shared/api-key-settings/api-key-settings.component';
+import { resolveActorImageUrl } from '../../core/config/api-url';
 
 @Component({
   selector: 'app-character-selection',
@@ -207,5 +208,9 @@ export class CharacterSelectionComponent implements OnInit {
       .map(part => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
   }
+
+  actorImageUrl(url?: string | null): string {
+    return resolveActorImageUrl(url);
+  }
 }
-
+

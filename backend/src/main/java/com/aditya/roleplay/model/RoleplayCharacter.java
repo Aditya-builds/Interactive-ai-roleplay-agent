@@ -1,5 +1,6 @@
 package com.aditya.roleplay.model;
 
+import com.aditya.roleplay.model.visual.CharacterVisualIdentity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
@@ -20,7 +21,9 @@ public record RoleplayCharacter(
         List<SeedMemory> seedMemories,
         String openingMessage,
         List<String> abilities,
-        List<String> goals) {
+        List<String> goals,
+        Appearance appearance,
+        CharacterVisualIdentity visualIdentity) {
 
     public RoleplayCharacter {
         personality = personality != null ? List.copyOf(personality) : List.of();
@@ -47,7 +50,28 @@ public record RoleplayCharacter(
             List<SeedMemory> seedMemories,
             String openingMessage) {
         this(id, worldId, name, imageUrl, health, personality, background, speakingStyle, values,
-                presence, defaultRelationships, seedMemories, openingMessage, List.of(), List.of());
+                presence, defaultRelationships, seedMemories, openingMessage, List.of(), List.of(), null, null);
+    }
+
+    /** Backward-compatible constructor without visual fields. */
+    public RoleplayCharacter(
+            String id,
+            String worldId,
+            String name,
+            String imageUrl,
+            CharacterHealth health,
+            List<String> personality,
+            String background,
+            String speakingStyle,
+            List<String> values,
+            CharacterPresence presence,
+            List<Relationship> defaultRelationships,
+            List<SeedMemory> seedMemories,
+            String openingMessage,
+            List<String> abilities,
+            List<String> goals) {
+        this(id, worldId, name, imageUrl, health, personality, background, speakingStyle, values,
+                presence, defaultRelationships, seedMemories, openingMessage, abilities, goals, null, null);
     }
 
     public String type() {

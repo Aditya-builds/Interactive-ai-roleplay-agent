@@ -1,11 +1,18 @@
 <div class="message-list">
   @for (message of messages; track message.id) {
-    <app-message-bubble
-      [message]="message"
-      [characterName]="characterName"
-      [characterImageUrl]="characterImageUrl"
-      [playerName]="playerName"
-      [playerImageUrl]="playerImageUrl"
-    />
+    @if (message.sceneImageId) {
+      <app-scene-image-card
+        [imageSrc]="sceneImageUrl(message.sceneImageId!)"
+        [caption]="message.content"
+      />
+    } @else {
+      <app-message-bubble
+        [message]="message"
+        [characterName]="characterName"
+        [characterImageUrl]="characterImageUrl"
+        [playerName]="playerName"
+        [playerImageUrl]="playerImageUrl"
+      />
+    }
   }
 </div>

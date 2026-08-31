@@ -11,6 +11,14 @@
       <app-api-key-settings />
       <button
         type="button"
+        class="scene-btn"
+        [disabled]="inputDisabled || !conversationId"
+        (click)="generateSceneImage()"
+      >
+        {{ generatingScene ? 'Generating...' : 'Generate Scene' }}
+      </button>
+      <button
+        type="button"
         class="fresh-btn"
         [disabled]="inputDisabled"
         (click)="startFresh()"
@@ -56,6 +64,15 @@
         }
       }
     </div>
+
+    @if (sceneError) {
+      <div class="error-panel scene-error-panel">
+        <p>{{ sceneError }}</p>
+        <button type="button" class="retry-btn" [disabled]="generatingScene" (click)="generateSceneImage()">
+          Try Again
+        </button>
+      </div>
+    }
 
     @if (sendError) {
       <div class="error-panel">

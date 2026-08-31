@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -30,8 +31,8 @@ class RoleplayTwoPhaseTest {
         }
 
         @Override
-        public List<String> getEnabledAlternatives() {
-            return List.of("com.aditya.roleplay.llm.TestLlmClient");
+        public Set<Class<?>> getEnabledAlternatives() {
+            return Set.of(TestLlmClient.class);
         }
     }
 

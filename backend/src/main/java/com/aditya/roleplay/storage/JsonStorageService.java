@@ -64,6 +64,15 @@ public class JsonStorageService {
     }
 
     public Optional<RoleplayCharacter> loadCharacter(String id) {
+        Path structured = dataPath.resolve("characters").resolve(id + ".json");
+        if (Files.exists(structured)) {
+            try {
+                return Optional.of(objectMapper.readValue(structured.toFile(), RoleplayCharacter.class));
+            } catch (IOException e) {
+                throw new RoleplayException("Failed to load character: " + id, "STORAGE_ERROR", 500);
+            }
+        }
+
         Path legacy = dataPath.resolve(id).resolve(id + ".json");
         if (Files.exists(legacy)) {
             try {
@@ -73,15 +82,7 @@ public class JsonStorageService {
             }
         }
 
-        Path structured = dataPath.resolve("characters").resolve(id + ".json");
-        if (!Files.exists(structured)) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(objectMapper.readValue(structured.toFile(), RoleplayCharacter.class));
-        } catch (IOException e) {
-            throw new RoleplayException("Failed to load character: " + id, "STORAGE_ERROR", 500);
-        }
+        return Optional.empty();
     }
 
     public List<World> loadWorlds() {

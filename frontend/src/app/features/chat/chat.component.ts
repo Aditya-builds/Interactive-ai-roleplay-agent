@@ -19,6 +19,8 @@ import { StatePanelComponent } from './components/state-panel/state-panel.compon
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
 import { ApiKeySettingsComponent } from '../../shared/api-key-settings/api-key-settings.component';
+import { SceneImageApiService } from '../../core/services/scene-image-api.service';
+import { apiUrl, resolveActorImageUrl } from '../../core/config/api-url';
 
 @Component({
   selector: 'app-chat',
@@ -52,8 +54,10 @@ export class ChatComponent implements OnInit, OnDestroy {
   messages: Message[] = [];
   loading = true;
   sending = false;
+  generatingScene = false;
   restarting = false;
   sendError = false;
+  sceneError = '';
   pendingMessage = '';
   private routeSub?: Subscription;
 
@@ -62,7 +66,8 @@ export class ChatComponent implements OnInit, OnDestroy {
     private router: Router,
     private conversationApi: ConversationApiService,
     private characterApi: CharacterApiService,
-    private personaApi: PersonaApiService
+    private personaApi: PersonaApiService,
+    private sceneImageApi: SceneImageApiService
   ) {}
 
   ngOnInit(): void {
@@ -83,7 +88,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   get inputDisabled(): boolean {
-    return this.loading || this.sending || this.restarting;
+    return this.loading || this.sending || this.restarting || this.generatingScene;
   }
 
   loadConversation(): void {
@@ -109,7 +114,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.characterApi.getCharacter(characterId).subscribe({
       next: (detail) => {
         this.characterName = detail.character.name;
-        this.characterImageUrl = detail.character.imageUrl ?? '';
+        this.characterImageUrl = resolveActorImageUrl(detail.character.imageUrl ?? '');
       }
     });
   }
@@ -124,7 +129,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.personaApi.getPersona(playerPersonaId).subscribe({
       next: (persona) => {
         this.playerName = persona.name;
-        this.playerImageUrl = persona.imageUrl ?? '';
+        this.playerImageUrl = resolveActorImageUrl(persona.imageUrl ?? '');
       },
       error: () => {
         this.playerName = 'You';
@@ -192,6 +197,29 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.onSend(this.pendingMessage);
   }
 
+  generateSceneImage(): void {
+    if (!this.conversationId || this.generatingScene) {
+      return;
+    }
+
+    this.generatingScene = true;
+    this.sceneError = '';
+
+    this.sceneImageApi.generateSceneImage(this.conversationId).pipe(
+      switchMap(() => this.conversationApi.getConversation(this.conversationId))
+    ).subscribe({
+      next: (conversation) => {
+        this.applyConversation(conversation);
+        this.generatingScene = false;
+        this.scrollToBottom();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generatingScene = false;
+        this.sceneError = err.error?.error ?? 'Scene image generation failed. Is the backend running?';
+      }
+    });
+  }
+
   private createNewConversation(): void {
     this.conversationApi.createLegacyConversation(this.characterId).subscribe({
       next: (conversation) => {
@@ -228,6 +256,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.playerImageUrl = '';
     this.relationships = [];
     this.sendError = false;
+    this.sceneError = '';
     this.pendingMessage = '';
   }
 

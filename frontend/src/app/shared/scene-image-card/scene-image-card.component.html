@@ -1,0 +1,8 @@
+<article class="scene-image-card">
+  <div class="scene-image-frame">
+    <img [src]="imageSrc" [alt]="caption || 'Generated scene'" loading="lazy" />
+  </div>
+  @if (caption) {
+    <p class="scene-image-caption">{{ caption }}</p>
+  }
+</article>

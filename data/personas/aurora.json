@@ -2,7 +2,7 @@
   "id": "aurora",
   "name": "Aurora",
   "worldId": "shattered_world",
-  "imageUrl": "/personas/aurora.png",
+  "imageUrl": "/api/visuals/references/aurora",
   "profile": {
     "description": "A calm, intelligent human mage who has entered Ramiris and the east market — capable, watchful, and aware that Varellia does not offer elves a fair chance.",
     "personality": [

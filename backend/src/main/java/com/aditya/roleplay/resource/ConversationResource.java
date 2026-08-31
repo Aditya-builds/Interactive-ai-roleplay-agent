@@ -4,8 +4,10 @@ import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.CreateConversationRequest;
 import com.aditya.roleplay.model.SendMessageRequest;
 import com.aditya.roleplay.model.SendMessageResponse;
+import com.aditya.roleplay.model.visual.GenerateSceneImageResponse;
 import com.aditya.roleplay.service.ConversationService;
 import com.aditya.roleplay.service.RoleplayService;
+import com.aditya.roleplay.visual.SceneImageService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -29,6 +31,9 @@ public class ConversationResource {
     @Inject
     RoleplayService roleplayService;
 
+    @Inject
+    SceneImageService sceneImageService;
+
     @POST
     public Conversation createConversation(CreateConversationRequest request) {
         return conversationService.create(request);
@@ -48,6 +53,15 @@ public class ConversationResource {
             @Context HttpHeaders headers) {
         String userApiKey = headers.getHeaderString("X-LLM-Api-Key");
         return roleplayService.processTurn(id, request.content(), userApiKey);
+    }
+
+    @POST
+    @Path("/{id}/scene-images")
+    public GenerateSceneImageResponse generateSceneImage(
+            @PathParam("id") String id,
+            @Context HttpHeaders headers) {
+        String userApiKey = headers.getHeaderString("X-LLM-Api-Key");
+        return sceneImageService.generateForConversation(id, userApiKey);
     }
 
     @DELETE
