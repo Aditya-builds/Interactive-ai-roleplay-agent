@@ -1,0 +1,24 @@
+title = "Roleplay agent gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Example placeholders and docs that mention API keys without real secrets"
+paths = [
+  '''(?i)\.env\.example$''',
+  '''(?i)README\.md$''',
+  '''(?i)backend/\.env\.example$''',
+]
+regexes = [
+  '''(?i)your[_-]?api[_-]?key[_-]?here''',
+  '''(?i)your[_-]?openai[_-]?api[_-]?key[_-]?here''',
+  '''(?i)your[_-]?deepseek[_-]?api[_-]?key''',
+  '''(?i)your_key''',
+  '''(?i)your_key_here''',
+  '''(?i)sk-your''',
+  '''(?i)sk-test''',
+  '''(?i)sk-fake''',
+  '''(?i)sk-placeholder''',
+  '''(?i)xxxx''',
+]
