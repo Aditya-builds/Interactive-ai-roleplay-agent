@@ -102,7 +102,10 @@ describe('ChatComponent state panel sync', () => {
     fixture.detectChanges();
 
     const sendReq = http.expectOne(`/api/conversations/${conversationId}/messages`);
-    expect(sendReq.request.body).toEqual({ content: 'you look tired are you alright ?' });
+    expect(sendReq.request.body).toEqual({
+      content: 'you look tired are you alright ?',
+      replyLength: 'normal'
+    });
     sendReq.flush({
       message: { id: 'm3', role: 'assistant', content: 'I appreciate you asking.', timestamp: '2026-01-01T00:01:00Z' },
       conversationId,
