@@ -12,18 +12,23 @@ data/
 ├── characters.json          ← index
 ├── worlds.json              ← index
 ├── characters/              ← DEFINITIONS: who exists
+│   └── references/          ← canonical reference images (aurora-canonical.jpg, …)
 ├── worlds/                  ← DEFINITIONS: world + location catalog
+├── generated-images/        ← RUNTIME: scene image outputs (gitignored)
 └── conversations/           ← RUNTIME: one file per story session
     └── conversation-001.json  ← reference example (20 messages)
 ```
+
+Optional visual director service: `../visual-agent/` (LangGraph, not stored under `data/`).
 
 ## Three layers
 
 | Layer | Location | Example |
 |-------|----------|---------|
-| Definitions | `characters/`, `worlds/` | Aurora's personality, guild_hall description |
+| Definitions | `characters/`, `worlds/` | Aurora's personality, guild_hall description, `visualIdentity` |
 | World state | inside `conversations/` | Aurora HP 72, current scene, relationships |
-| History | inside `conversations/` | events, memories, messages |
+| History | inside `conversations/` | events, memories, messages (including `sceneImageId` messages) |
+| Visual artifacts | `generated-images/` | Scene image files + generation metadata JSON |
 
 ## Reference conversation
 

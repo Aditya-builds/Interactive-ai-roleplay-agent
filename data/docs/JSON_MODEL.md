@@ -39,10 +39,14 @@ data/
 ├── characters.json            ← index of character ids
 ├── worlds.json                ← index of world ids
 ├── characters/
-│   ├── aurora.json            ← definition
+│   ├── aurora.json            ← definition (includes visualIdentity)
+│   ├── references/            ← canonical reference images for scene generation
+│   │   ├── aurora-canonical.jpg
+│   │   └── runa-canonical.jpg
 │   └── laxus.json
 ├── worlds/
 │   └── fantasy_world.json     ← definition + location catalog
+├── generated-images/          ← runtime: scene image files + metadata (gitignored)
 └── conversations/
     └── conversation-001.json  ← full runtime example
 ```
@@ -409,3 +413,205 @@ USER MESSAGE          ← this turn's input
 | `CharacterRuntimeState.location` | `characterStates[id].locationId` |
 
 See `conversations/conversation-001.json` for a complete reference instance.
+
+---
+
+## 13. Visual generation (scene images)
+
+Scene images are **not** part of authoritative story state. They are derived artifacts stored alongside the conversation transcript.
+
+### Responsibility split
+
+| Component | Role |
+|-----------|------|
+| **Quarkus** | Authoritative game/story state, persistence, API, image storage, gpt-image-2 calls |
+| **Visual agent (V2, optional)** | Visual reasoning only — context selection, character framing, prompt planning |
+| **gpt-image-2** | Image rendering only |
+
+The visual agent must **not** mutate characters, relationships, scenes, or memories.
+
+### Character visual identity (definitions)
+
+Canonical appearance lives on the character definition under `visualIdentity`:
+
+```jsonc
+{
+  "id": "aurora",
+  "imageUrl": "/api/visuals/references/aurora",
+  "visualIdentity": {
+    "canonicalReferenceImage": "/api/visuals/references/aurora",
+    "visualDescription": "...",
+    "faceDescription": "...",
+    "hairDescription": "...",
+    "eyeDescription": "...",
+    "skinDescription": "...",
+    "bodyDescription": "...",
+    "clothingDescription": "...",
+    "accessories": ["..."],
+    "artStyle": "dark fantasy, cinematic ...",
+    "negativePrompt": "different face, blonde hair, ...",
+    "supplementaryReferenceImages": []
+  }
+}
+```
+
+Reference image files:
+
+```
+data/characters/references/{characterId}-canonical.jpg   (or .png)
+```
+
+Served at runtime: `GET /api/visuals/references/{characterId}`
+
+### Scene image messages (history)
+
+Messages may link to a generated image:
+
+```jsonc
+{
+  "id": "msg-scene-001",
+  "role": "assistant",
+  "content": "Scene: Aurora at guild_hall",
+  "timestamp": "...",
+  "sceneImageId": "e0bfdc11-70f9-4d4d-a061-72f29e4363f2"
+}
+```
+
+Image bytes: `GET /api/scene-images/{sceneImageId}/content`  
+Metadata: `GET /api/scene-images/{sceneImageId}`
+
+Generated files (runtime, not committed):
+
+```
+data/generated-images/{uuid}.jpg
+data/generated-images/{uuid}.json   ← prompt, characterIds, provider, model, ...
+```
+
+### V1 pipeline (always available)
+
+Triggered explicitly: `POST /api/conversations/{id}/scene-images`
+
+```
+Conversation (authoritative state)
+        ↓
+VisualScenePlannerService     ← scene + last ~4 dialogue messages
+        ↓
+VisualPromptService           ← structured CHARACTER IDENTITY + SCENE prompt
+        ↓
+ImageGenerationClient         ← gpt-image-2 (or local-stub in tests)
+        ↓
+VisualImageStorageService + new Message(sceneImageId)
+```
+
+Config (`backend/src/main/resources/application.properties`):
+
+```properties
+roleplay.visual.enabled=true
+roleplay.visual.provider=openai
+roleplay.visual.model=gpt-image-2
+roleplay.visual.base-url=https://api.openai.com/v1
+```
+
+### V2 pipeline (optional LangGraph director)
+
+When the visual agent is enabled and reachable, Quarkus calls it **before** image generation. V1 remains the fallback.
+
+```
+Conversation (authoritative state)
+        ↓
+VisualDirectorContextBuilder    ← compact context (≤8 messages, ≤5 events)
+        ↓
+POST visual-agent /visual/plan  ← LangGraph visual director
+        ↓
+VisualScenePlan                 ← shouldGenerate, characters, interaction, prompt
+        ↓
+VisualPromptCompilerService     ← reference paths + compiled prompt
+        ↓
+ImageGenerationClient → gpt-image-2
+```
+
+LangGraph graph (stateless, no database):
+
+```
+analyze_scene → detect_visual_moment
+    → [should generate?] → select_characters → retrieve_visual_identities
+    → select_relevant_context → direct_character_interaction → compose_scene
+    → consistency_guard → compile_visual_prompt
+```
+
+V2 config:
+
+```properties
+roleplay.visual.director.enabled=true
+roleplay.visual.director.base-url=http://localhost:8090
+roleplay.visual.director.timeout-ms=30000
+```
+
+Run the agent locally:
+
+```bash
+cd visual-agent
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8090
+```
+
+If the agent is disabled or unavailable, generation falls back to V1 automatically.
+
+### What the visual agent decides
+
+- Whether the current moment is visually important (trivial replies like "Okay." are deprioritized when not an explicit generate request)
+- Which characters belong in frame (primary / secondary / excluded)
+- Compact visual context (not full conversation or world bible)
+- Spatial interaction (pose, gaze, distance, body language between characters)
+- Scene composition (camera, lighting, atmosphere)
+- Identity consistency guard (face/hair/eyes/skin locked; scene-only changes allowed)
+- Final compact prompt + negative prompt for gpt-image-2
+
+### Visual agent API contract
+
+**Request** (`POST /visual/plan`): `VisualDirectorRequest`
+
+- `conversationId`, `focalCharacterId`, `explicitGeneration`
+- `scene`, `characterState`, `recentMessages`, `recentEvents`, `relationships`
+- `candidateCharacters`, `visualIdentities`
+
+**Response**:
+
+```jsonc
+{
+  "plan": {
+    "shouldGenerate": true,
+    "momentType": "EMOTIONAL_INTERACTION",
+    "reasoningSummary": "...",
+    "characters": [
+      {
+        "characterId": "aurora",
+        "name": "Aurora",
+        "referenceImage": "/api/visuals/references/aurora",
+        "pose": "...",
+        "expression": "...",
+        "action": "...",
+        "position": "left foreground"
+      }
+    ],
+    "scene": { "location": "guild_hall", "camera": "...", "lighting": "..." },
+    "interaction": { "focus": "...", "distance": "...", "bodyLanguage": "..." },
+    "prompt": "...",
+    "negativePrompt": "...",
+    "graphExecutionMs": 15
+  }
+}
+```
+
+On explicit **Generate Scene** clicks, Quarkus sets `explicitGeneration: true` so an image is still produced even for low-importance moments.
+
+### REST endpoints (visual)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/conversations/{id}/scene-images` | Generate scene image (explicit trigger) |
+| GET | `/api/scene-images/{id}` | Generation metadata |
+| GET | `/api/scene-images/{id}/content` | Image bytes |
+| GET | `/api/visuals/references/{characterId}` | Canonical reference image |
+
+API keys are passed via `X-LLM-Api-Key` from the frontend settings panel (never stored in Angular code).

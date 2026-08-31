@@ -141,19 +141,49 @@ After Render deploys, copy the backend URL into Vercel's `NG_APP_API_URL` and re
 1. Open http://localhost:4200
 2. Select a character (e.g. Aurora)
 3. Type an action or dialogue and press Send
-4. The character responds via GPT-4; the conversation is saved to `data/conversations/`
+4. The character responds via the configured LLM; the conversation is saved to `data/conversations/`
+5. Click **Generate Scene** in the chat header to create a scene image from the current moment (uses your API key from the settings panel)
+
+### Scene image generation (V1 + optional V2)
+
+Images are generated on demand — not on every chat turn.
+
+**V1 (default):** Quarkus plans the scene from current state + recent messages, builds a structured prompt, and calls **gpt-image-2**.
+
+**V2 (optional):** A separate Python **visual agent** (LangGraph) acts as a visual director — selecting relevant characters, interaction poses, and a compact prompt. Quarkus still owns all story state and image storage. If the agent is off or unreachable, V1 is used automatically.
+
+Enable V2 locally:
+
+```powershell
+# Terminal 1 — visual agent
+cd visual-agent
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8090
+
+# Terminal 2 — backend (add to backend/.env or application.properties)
+# roleplay.visual.director.enabled=true
+# roleplay.visual.director.base-url=http://localhost:8090
+cd backend
+mvn quarkus:dev
+```
+
+See `data/docs/JSON_MODEL.md` §13 and `visual-agent/README.md` for the full visual architecture.
 
 ## Project structure
 
 ```
 visual comic genrator/
-├── backend/          Quarkus REST API + roleplay engine
-├── frontend/         Angular chat UI
+├── backend/          Quarkus REST API + roleplay engine + scene image orchestration
+├── frontend/         Angular chat UI (Generate Scene button, scene image cards)
+├── visual-agent/     Optional LangGraph visual director (Python / FastAPI)
 └── data/             JSON storage (see data/README.md)
-    ├── characters.json   list of all characters
-    ├── aurora/           character folder (profile + images)
-    ├── worlds.json       list of all worlds
-    └── conversations/    runtime story sessions
+    ├── characters.json       list of all characters
+    ├── characters/
+    │   ├── aurora.json       character profile + visualIdentity
+    │   └── references/       canonical images for scene generation
+    ├── generated-images/     runtime scene outputs (gitignored)
+    ├── worlds.json           list of all worlds
+    └── conversations/        runtime story sessions
 ```
 
 ## API
@@ -163,3 +193,7 @@ visual comic genrator/
 - `POST /api/conversations` — body: `{ "characterId": "aurora" }`
 - `GET  /api/conversations/{id}`
 - `POST /api/conversations/{id}/messages` — body: `{ "content": "..." }`
+- `POST /api/conversations/{id}/scene-images` — generate scene image (header: `X-LLM-Api-Key`)
+- `GET  /api/scene-images/{id}` — scene image metadata
+- `GET  /api/scene-images/{id}/content` — scene image bytes
+- `GET  /api/visuals/references/{characterId}` — canonical character reference image

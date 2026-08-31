@@ -2,6 +2,12 @@
 .env
 backend/.env
 
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
 # Build
 backend/target/
 frontend/dist/
