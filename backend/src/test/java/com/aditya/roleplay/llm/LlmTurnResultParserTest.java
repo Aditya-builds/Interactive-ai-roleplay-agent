@@ -67,4 +67,41 @@ class LlmTurnResultParserTest {
 
         assertFalse(result.success());
     }
+
+    @Test
+    void parsesNarrativeOnlyResponse() {
+        String json = """
+                {"response": "Runa nods slowly."}
+                """;
+
+        LlmTurnResultParser.NarrativeParseResult result = parser.parseNarrative(json);
+
+        assertTrue(result.success());
+        assertEquals("Runa nods slowly.", result.narrative());
+    }
+
+    @Test
+    void parsesStateExtractionResponse() {
+        String json = """
+                {
+                  "stateChanges": [
+                    {
+                      "type": "RELATIONSHIP",
+                      "targetId": "user",
+                      "field": "familiarity",
+                      "operation": "INCREASE",
+                      "value": "1"
+                    }
+                  ],
+                  "events": [],
+                  "memories": []
+                }
+                """;
+
+        LlmTurnResultParser.StateExtractionParseResult result = parser.parseStateExtraction(json);
+
+        assertTrue(result.success());
+        assertEquals(1, result.extraction().stateChanges().size());
+        assertEquals("user", result.extraction().stateChanges().get(0).targetId());
+    }
 }

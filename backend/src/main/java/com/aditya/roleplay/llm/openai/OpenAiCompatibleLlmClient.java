@@ -4,7 +4,9 @@ import com.aditya.roleplay.exception.LlmException;
 import com.aditya.roleplay.llm.LlmClient;
 import com.aditya.roleplay.llm.LlmMessage;
 import com.aditya.roleplay.llm.LlmRequest;
+import com.aditya.roleplay.llm.LlmRequestKind;
 import com.aditya.roleplay.llm.LlmResponse;
+import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.llm.LlmTurnResultParser;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +55,12 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
     @ConfigProperty(name = "roleplay.llm.openai.base-url")
     Optional<String> legacyOpenAiBaseUrl;
 
+    @ConfigProperty(name = "roleplay.llm.max-retries")
+    int maxRetries;
+
+    @ConfigProperty(name = "roleplay.llm.retry-base-delay-ms")
+    long retryBaseDelayMs;
+
     @Override
     public LlmResponse complete(LlmRequest request) {
         return complete(request, null);
@@ -67,9 +75,12 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         }
 
         try {
-            return callWithRetry(request, resolvedApiKey, false);
+            return executeAttempt(request, resolvedApiKey, 0);
         } catch (LlmException e) {
             throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new LlmException("LLM request interrupted during retry backoff", e);
         } catch (Exception e) {
             throw new LlmException("Failed to call LLM: " + e.getMessage(), e);
         }
@@ -82,7 +93,36 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
         return apiKey.or(() -> legacyOpenAiApiKey).orElse("").trim();
     }
 
-    private LlmResponse callWithRetry(LlmRequest request, String resolvedApiKey, boolean isRetry) throws Exception {
+    private LlmResponse executeAttempt(LlmRequest request, String resolvedApiKey, int retryCount)
+            throws Exception {
+        HttpResponse<String> response = sendRequest(request, resolvedApiKey);
+        int status = response.statusCode();
+        String body = response.body();
+
+        if (LlmRetryPolicy.isJsonModeUnsupported(status, body, request.jsonMode())) {
+            LlmRequest fallbackRequest = new LlmRequest(
+                    request.systemPrompt(),
+                    request.messages(),
+                    request.temperature(),
+                    request.maxTokens(),
+                    false,
+                    request.kind());
+            return executeAttempt(fallbackRequest, resolvedApiKey, retryCount);
+        }
+
+        if (LlmRetryPolicy.isRetryable(status) && retryCount < maxRetries) {
+            Thread.sleep(LlmRetryPolicy.backoffDelayMs(retryCount, retryBaseDelayMs));
+            return executeAttempt(request, resolvedApiKey, retryCount + 1);
+        }
+
+        if (status != 200) {
+            throw new LlmException(LlmRetryPolicy.httpErrorMessage(status, body));
+        }
+
+        return parseSuccessResponse(body, request);
+    }
+
+    private HttpResponse<String> sendRequest(LlmRequest request, String resolvedApiKey) throws Exception {
         String resolvedModel = model.or(() -> legacyOpenAiModel).orElse("gpt-4");
         String resolvedBaseUrl = baseUrl.or(() -> legacyOpenAiBaseUrl).orElse("https://api.openai.com/v1");
         if (resolvedBaseUrl.endsWith("/")) {
@@ -95,71 +135,68 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
             apiMessages.add(Map.of("role", message.role(), "content", message.content()));
         }
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("model", resolvedModel);
-        body.put("messages", apiMessages);
-        body.put("temperature", request.temperature());
-        body.put("max_tokens", request.maxTokens());
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", resolvedModel);
+        requestBody.put("messages", apiMessages);
+        requestBody.put("temperature", request.temperature());
+        requestBody.put("max_tokens", request.maxTokens());
         if (request.jsonMode()) {
-            body.put("response_format", Map.of("type", "json_object"));
+            requestBody.put("response_format", Map.of("type", "json_object"));
         }
-
-        String jsonBody = objectMapper.writeValueAsString(body);
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(resolvedBaseUrl + "/chat/completions"))
                 .timeout(Duration.ofSeconds(60))
                 .header("Authorization", "Bearer " + resolvedApiKey)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    }
 
-        if (response.statusCode() == 400 && request.jsonMode() && response.body().contains("response_format") && !isRetry) {
-            LlmRequest fallbackRequest = new LlmRequest(
-                    request.systemPrompt(),
-                    request.messages(),
-                    request.temperature(),
-                    request.maxTokens(),
-                    false);
-            return callWithRetry(fallbackRequest, resolvedApiKey, true);
-        }
-
-        if ((response.statusCode() == 429 || response.statusCode() >= 500) && !isRetry) {
-            Thread.sleep(1000);
-            return callWithRetry(request, resolvedApiKey, true);
-        }
-
-        if (response.statusCode() != 200) {
-            throw new LlmException("LLM returned status " + response.statusCode() + ": " + response.body());
-        }
-
-        ChatCompletionResponse parsed = objectMapper.readValue(response.body(), ChatCompletionResponse.class);
+    private LlmResponse parseSuccessResponse(String body, LlmRequest request)
+            throws Exception {
+        ChatCompletionResponse parsed = objectMapper.readValue(body, ChatCompletionResponse.class);
         if (parsed.choices == null || parsed.choices.isEmpty()) {
             throw new LlmException("LLM returned no choices");
         }
 
-        String content = parsed.choices.get(0).message.content;
+        Choice firstChoice = parsed.choices.get(0);
+        if (firstChoice.message == null || firstChoice.message.content == null || firstChoice.message.content.isBlank()) {
+            throw new LlmException("LLM returned an empty message");
+        }
+
+        String content = firstChoice.message.content;
         Integer tokens = parsed.usage != null ? parsed.usage.totalTokens : null;
-        String responseModel = parsed.model != null ? parsed.model : resolvedModel;
+        String responseModel = parsed.model != null ? parsed.model : model.or(() -> legacyOpenAiModel).orElse("gpt-4");
 
-        if (request.jsonMode()) {
-            LlmTurnResultParser.ParseResult parseResult = turnResultParser.parse(content);
-            return new LlmResponse(
-                    content,
-                    parseResult.turnResult(),
-                    responseModel,
-                    tokens,
-                    parseResult.success());
-        }
-
-        LlmTurnResultParser.ParseResult parseResult = turnResultParser.parse(content);
-        if (parseResult.success()) {
-            return new LlmResponse(content, parseResult.turnResult(), responseModel, tokens, true);
-        }
-
-        return new LlmResponse(content, null, responseModel, tokens, false);
+        return switch (request.kind()) {
+            case NARRATIVE_ONLY -> {
+                LlmTurnResultParser.NarrativeParseResult parseResult = turnResultParser.parseNarrative(content);
+                LlmTurnResult turnResult = parseResult.success()
+                        ? new LlmTurnResult(parseResult.narrative(), List.of(), List.of(), List.of())
+                        : null;
+                yield new LlmResponse(content, turnResult, responseModel, tokens, parseResult.success());
+            }
+            case STATE_EXTRACTION -> {
+                LlmTurnResultParser.StateExtractionParseResult parseResult =
+                        turnResultParser.parseStateExtraction(content);
+                LlmTurnResult turnResult = parseResult.success()
+                        ? new LlmTurnResult(
+                                "",
+                                parseResult.extraction().stateChanges(),
+                                parseResult.extraction().events(),
+                                parseResult.extraction().memories())
+                        : null;
+                yield new LlmResponse(content, turnResult, responseModel, tokens, parseResult.success());
+            }
+            case FULL_TURN -> {
+                LlmTurnResultParser.ParseResult parseResult = turnResultParser.parse(content);
+                yield new LlmResponse(
+                        content, parseResult.turnResult(), responseModel, tokens, parseResult.success());
+            }
+        };
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

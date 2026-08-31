@@ -1,10 +1,6 @@
 package com.aditya.roleplay.service;
 
-import com.aditya.roleplay.exception.LlmException;
 import com.aditya.roleplay.exception.RoleplayException;
-import com.aditya.roleplay.llm.LlmClient;
-import com.aditya.roleplay.llm.LlmRequest;
-import com.aditya.roleplay.llm.LlmResponse;
 import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
@@ -47,6 +43,9 @@ public class RoleplayService {
     PromptService promptService;
 
     @Inject
+    RoleplayLlmService roleplayLlmService;
+
+    @Inject
     StateChangeProcessor stateChangeProcessor;
 
     @Inject
@@ -54,9 +53,6 @@ public class RoleplayService {
 
     @Inject
     RelationshipService relationshipService;
-
-    @Inject
-    LlmClient llmClient;
 
     public SendMessageResponse processTurn(String conversationId, String content) {
         return processTurn(conversationId, content, null);
@@ -79,15 +75,9 @@ public class RoleplayService {
                 conversation.characterId(),
                 conversation.playerPersonaId());
 
-        LlmRequest llmRequest = promptService.build(
-                character, world, conversation, trimmed, allowedRelationshipTargets, playerPersona, story);
-        LlmResponse llmResponse = llmClient.complete(llmRequest, userApiKey);
-
-        if (!llmResponse.structuredParseSuccess() || llmResponse.turnResult() == null) {
-            throw new LlmException("LLM returned invalid structured output. Turn was not saved.");
-        }
-
-        LlmTurnResult turnResult = llmResponse.turnResult();
+        LlmTurnResult turnResult = roleplayLlmService.generateTurnResult(
+                character, world, conversation, trimmed,
+                allowedRelationshipTargets, playerPersona, story, userApiKey);
 
         Message userMessage = new Message(
                 UUID.randomUUID().toString(),

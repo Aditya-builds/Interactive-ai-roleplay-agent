@@ -79,6 +79,50 @@ public class PromptContextService {
                 conversation.characterId());
     }
 
+    public String buildStateExtractionContext(
+            Conversation conversation,
+            String latestUserMessage,
+            String narrative,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona) {
+
+        return """
+                CURRENT SCENE
+                %s
+
+                %s CURRENT STATE
+                %s
+
+                RECENT STORY EVENTS
+                %s
+
+                IMPORTANT MEMORIES
+                %s
+
+                RELATIONSHIPS (%s's perspective — directional, not mutual)
+                %s
+
+                PLAYER ACTION
+                %s
+
+                LOCKED NARRATIVE (already shown to the player — do not rewrite)
+                %s
+
+                Extract stateChanges, events, and memories that match the locked narrative.
+                If the narrative describes a mood, location, relationship, or scene shift, it MUST appear in stateChanges.
+                Return structured JSON only — no narrative text.
+                """.formatted(
+                formatCurrentSituation(conversation, playerPersona),
+                conversation.characterId(),
+                formatCharacterState(conversation),
+                formatRecentEvents(conversation),
+                formatImportantMemories(conversation),
+                conversation.characterId(),
+                formatRelationships(conversation, allowedRelationshipTargets),
+                latestUserMessage,
+                narrative);
+    }
+
     private String formatCharacterState(Conversation conversation) {
         var runtime = conversation.characterState();
         if (runtime == null) {

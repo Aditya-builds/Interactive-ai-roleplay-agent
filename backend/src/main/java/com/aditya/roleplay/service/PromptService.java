@@ -2,6 +2,7 @@ package com.aditya.roleplay.service;
 
 import com.aditya.roleplay.llm.LlmMessage;
 import com.aditya.roleplay.llm.LlmRequest;
+import com.aditya.roleplay.llm.LlmRequestKind;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
 import com.aditya.roleplay.model.PlayerPersona;
@@ -36,6 +37,9 @@ public class PromptService {
     @ConfigProperty(name = "roleplay.llm.json-mode", defaultValue = "true")
     boolean jsonMode;
 
+    @ConfigProperty(name = "roleplay.llm.extraction-max-tokens", defaultValue = "800")
+    int extractionMaxTokens;
+
     @ConfigProperty(name = "roleplay.state.max-relationship-delta", defaultValue = "3")
     int maxRelationshipDelta;
 
@@ -63,7 +67,73 @@ public class PromptService {
         List<LlmMessage> chatMessages = buildChatMessages(
                 recentMessages, latestUserMessage, conversation, allowedRelationshipTargets, playerPersona, story);
 
-        return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode);
+        return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode, LlmRequestKind.FULL_TURN);
+    }
+
+    public LlmRequest buildNarrativeRequest(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story) {
+
+        String systemPrompt = buildNarrativeSystemPrompt(
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story);
+        List<Message> recentMessages = selectRecentMessages(conversation.messages());
+        List<LlmMessage> chatMessages = buildChatMessages(
+                recentMessages, latestUserMessage, conversation, allowedRelationshipTargets, playerPersona, story);
+
+        return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode, LlmRequestKind.NARRATIVE_ONLY);
+    }
+
+    public LlmRequest buildStateExtractionRequest(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            String latestUserMessage,
+            String narrative,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story) {
+
+        String systemPrompt = buildStateExtractionSystemPrompt(
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story);
+        String extractionContext = promptContextService.buildStateExtractionContext(
+                conversation, latestUserMessage, narrative, allowedRelationshipTargets, playerPersona);
+        List<LlmMessage> messages = List.of(new LlmMessage("user", extractionContext));
+
+        return new LlmRequest(
+                systemPrompt, messages, temperature, extractionMaxTokens, jsonMode, LlmRequestKind.STATE_EXTRACTION);
+    }
+
+    private String buildNarrativeSystemPrompt(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story) {
+
+        return buildCharacterContextPrompt(
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story,
+                """
+                ROLEPLAY RULES (NARRATIVE ONLY)
+                1. Stay in character as %s at all times.
+                2. You control ONLY %s, NPCs, and the environment.
+                3. NEVER control %s: do not describe what they do, think, feel, or say unless explicitly written by the player.
+                4. Do not write the player's dialogue or internal monologue.
+                5. Maintain continuity with the scene, memories, events, and recent conversation.
+                6. Write rich, immersive narrative: 2-6 paragraphs when the scene warrants depth; shorter for quick exchanges.
+                7. Return ONLY valid JSON with a single field. No markdown, no extra text.
+
+                OUTPUT SCHEMA
+                {
+                  "response": "Narrative reply the player sees, written in character."
+                }
+                """.formatted(character.name(), character.name(),
+                        playerPersona != null ? playerPersona.name() : "the player"));
     }
 
     private String buildSystemPrompt(
@@ -221,6 +291,146 @@ public class PromptService {
                 character.id(),
                 character.id(),
                 character.id());
+    }
+
+    private String buildStateExtractionSystemPrompt(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story) {
+
+        String playerControlId = conversation.resolvedPlayerPersonaId();
+        String relationshipTargets = allowedRelationshipTargets.stream()
+                .sorted()
+                .collect(Collectors.joining(", "));
+
+        return buildCharacterContextPrompt(
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story,
+                """
+                STATE EXTRACTION PASS
+                You are a game state extractor — not a storyteller.
+                The narrative has already been written and shown to the player. Do NOT rewrite or extend it.
+                Read the LOCKED NARRATIVE in the user message and extract matching structured state.
+
+                EXTRACTION RULES
+                - Every mood, location, relationship, or scene shift described in the narrative MUST appear in stateChanges.
+                - If nothing in the narrative warrants a state update, return empty arrays.
+                - You cannot modify the player persona's health, status, or emotion — only the player declares those.
+                - Propose at most 5 stateChanges per turn.
+                - Return ONLY valid JSON. No markdown, no narrative text.
+
+                STATE CHANGE REQUIREMENTS (MANDATORY WHEN APPLICABLE)
+                - If the narrative shows care, trust, or comfort: propose RELATIONSHIP trust and/or affection INCREASE (1-%d) toward targetId "%s".
+                - If the narrative describes %s's expression or mood changing: propose EMOTION with a specific value.
+                - If the narrative describes injury or exhaustion for %s: propose STATUS and EMOTION for %s only.
+                - If the scene dynamic changes: propose SCENE currentSituation SET to a short new description.
+
+                OUTPUT SCHEMA
+                {
+                  "stateChanges": [ ... ],
+                  "events": [ ... ],
+                  "memories": [ ... ]
+                }
+
+                STATE CHANGE RULES
+                - RELATIONSHIP targetId is who %s has feelings toward: %s. Fields: trust, respect, affection, familiarity, suspicion. Use INCREASE/DECREASE (1-%d) or SET (0-100).
+                - SCENE targetId must be "scene". Fields: location, userLocation, time, currentSituation, currentConflict, charactersPresent, addCharacter, removeCharacter. SET only.%s
+                - HEALTH targetId must be %s only.
+                - LOCATION targetId: use "%s" or "scene" when the NPC moves. Use "user" when ONLY the player moves alone.
+                - STATUS and EMOTION targetId must be %s only.
+                - Use empty arrays when nothing applies.
+                """.formatted(
+                maxRelationshipDelta,
+                playerControlId,
+                character.name(),
+                character.name(),
+                character.name(),
+                character.name(),
+                relationshipTargets,
+                maxRelationshipDelta,
+                worldLocationRuleSuffix(world),
+                character.id(),
+                character.id(),
+                character.id()));
+    }
+
+    private String buildCharacterContextPrompt(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story,
+            String rulesAndSchemaSuffix) {
+
+        String personality = character.personality() != null
+                ? String.join(", ", character.personality())
+                : "";
+        String values = character.values() != null
+                ? character.values().stream().map(v -> "- " + v).collect(Collectors.joining("\n"))
+                : "- (none listed)";
+        String worldRules = world.rules().stream()
+                .map(r -> "- " + r)
+                .collect(Collectors.joining("\n"));
+
+        String playerPersonaSection = formatPlayerPersonaSection(playerPersona, conversation);
+        String storySection = formatStorySection(story);
+        String worldLocations = formatWorldLocations(world);
+        String playerName = playerPersona != null ? playerPersona.name() : "the player";
+
+        return """
+                You control %s (AI character).
+
+                You do NOT control %s.
+                %s is the player's persona — USER CONTROLLED.
+
+                Never decide %s's dialogue, thoughts, feelings, actions, decisions, or physical reactions unless the player explicitly wrote them.
+                Only respond to what the player actually provides.
+
+                PLAYER PERSONA (USER CONTROLLED — DO NOT WRITE FOR THEM)
+                %s
+
+                AI CHARACTER (YOU CONTROL)
+                Name: %s
+                Personality: %s
+                Background: %s
+                Speaking style: %s
+                Values:
+                %s
+                Goals: %s
+                Abilities: %s
+
+                WORLD
+                %s: %s
+                Rules:
+                %s
+                %s
+
+                STORY
+                %s
+
+                %s
+                """.formatted(
+                character.name(),
+                playerName,
+                playerName,
+                playerName,
+                playerPersonaSection,
+                character.name(),
+                personality,
+                character.background(),
+                character.speakingStyle(),
+                values,
+                String.join(", ", character.goals() != null ? character.goals() : List.of()),
+                String.join(", ", character.abilities() != null ? character.abilities() : List.of()),
+                world.name(),
+                world.description(),
+                worldRules,
+                worldLocations,
+                storySection,
+                rulesAndSchemaSuffix);
     }
 
     private String formatPlayerPersonaSection(PlayerPersona persona, Conversation conversation) {

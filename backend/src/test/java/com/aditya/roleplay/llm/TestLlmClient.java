@@ -32,24 +32,48 @@ public class TestLlmClient implements LlmClient {
 
     @Override
     public LlmResponse complete(LlmRequest request) {
+        return complete(request, null);
+    }
+
+    @Override
+    public LlmResponse complete(LlmRequest request, String apiKeyOverride) {
         if (!structuredSuccess) {
             return new LlmResponse("plain text only", null, "test-model", 50, false);
         }
 
-        LlmTurnResult turnResult = SCRIPTED_RESULTS.pollFirst();
-        if (turnResult == null) {
-            turnResult = new LlmTurnResult(
-                    "Aurora watches you carefully.",
-                    List.of(new StateChange(
-                            StateChangeType.RELATIONSHIP,
-                            "user",
-                            "familiarity",
-                            StateChangeOperation.INCREASE,
-                            "1")),
-                    List.of(),
-                    List.of());
-        }
+        LlmTurnResult scripted = SCRIPTED_RESULTS.pollFirst();
+        LlmTurnResult turnResult = scripted != null
+                ? adaptToKind(scripted, request.kind())
+                : defaultResult(request.kind());
 
         return new LlmResponse("{}", turnResult, "test-model", 100, true);
+    }
+
+    private static LlmTurnResult adaptToKind(LlmTurnResult result, LlmRequestKind kind) {
+        return switch (kind) {
+            case NARRATIVE_ONLY -> new LlmTurnResult(
+                    result.response(), List.of(), List.of(), List.of());
+            case STATE_EXTRACTION -> new LlmTurnResult(
+                    "", result.stateChanges(), result.events(), result.memories());
+            case FULL_TURN -> result;
+        };
+    }
+
+    private static LlmTurnResult defaultResult(LlmRequestKind kind) {
+        List<StateChange> defaultStateChange = List.of(new StateChange(
+                StateChangeType.RELATIONSHIP,
+                "user",
+                "familiarity",
+                StateChangeOperation.INCREASE,
+                "1"));
+
+        return switch (kind) {
+            case NARRATIVE_ONLY -> new LlmTurnResult(
+                    "Aurora watches you carefully.", List.of(), List.of(), List.of());
+            case STATE_EXTRACTION -> new LlmTurnResult(
+                    "", defaultStateChange, List.of(), List.of());
+            case FULL_TURN -> new LlmTurnResult(
+                    "Aurora watches you carefully.", defaultStateChange, List.of(), List.of());
+        };
     }
 }
