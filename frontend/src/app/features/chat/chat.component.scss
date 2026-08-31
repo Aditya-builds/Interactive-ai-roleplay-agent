@@ -69,7 +69,8 @@
 }
 
 .fresh-btn,
-.scene-btn {
+.scene-btn,
+.delete-btn {
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -88,9 +89,55 @@
   border-color: var(--border-strong);
 }
 
+.scene-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.scene-btn:disabled,
 .fresh-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.scene-btn.generating {
+  border-color: var(--accent, #8b9cb3);
+  color: var(--text-primary);
+}
+
+.delete-btn:hover:not(:disabled) {
+  color: #e57373;
+  border-color: #e57373;
+}
+
+.reply-length-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem 0;
+}
+
+.reply-length-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+.length-btn {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.length-btn.active {
+  background: var(--accent, #7c6cff);
+  border-color: transparent;
+  color: #fff;
 }
 
 .chat-main {

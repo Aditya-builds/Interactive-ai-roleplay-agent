@@ -62,6 +62,17 @@ export interface Conversation {
   messages: Message[];
 }
 
+export interface ConversationSummary {
+  id: string;
+  characterId: string;
+  characterName: string;
+  preview: string;
+  messageCount: number;
+  updatedAt: string;
+}
+
+export type ReplyLength = 'short' | 'normal' | 'long';
+
 export interface SendMessageResponse {
   message: Message;
   conversationId: string;

@@ -89,6 +89,31 @@ public class VisualImageStorageService {
         return "/api/scene-images/" + imageId + "/content";
     }
 
+    public Path characterReferenceDirectory(String characterId) {
+        return referencesPath.resolve(characterId);
+    }
+
+    public Path characterReferenceImagePath(String characterId, String filename) {
+        Path direct = referencesPath.resolve(characterId).resolve(filename);
+        if (Files.exists(direct)) {
+            return direct;
+        }
+        return referencesPath.resolve(filename);
+    }
+
+    public Optional<Path> loadCharacterReferenceImage(String characterId, String referenceId) {
+        String filename = referenceId.contains(".") ? referenceId : referenceId + ".jpg";
+        Path imagePath = characterReferenceImagePath(characterId, filename);
+        if (Files.exists(imagePath)) {
+            return Optional.of(imagePath);
+        }
+        Path pngPath = characterReferenceImagePath(characterId, referenceId + ".png");
+        if (Files.exists(pngPath)) {
+            return Optional.of(pngPath);
+        }
+        return Optional.empty();
+    }
+
     private static String extensionForMime(String mimeType) {
         if (mimeType != null && mimeType.contains("png")) {
             return ".png";

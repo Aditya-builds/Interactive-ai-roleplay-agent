@@ -1,0 +1,33 @@
+<button
+  type="button"
+  class="persona-card"
+  [class.selected]="selected"
+  (click)="selectPersona.emit(persona)"
+>
+  <app-actor-portrait
+    class="persona-portrait"
+    [src]="actorImageUrl(persona.imageUrl)"
+    [name]="persona.name"
+    [alt]="persona.name + ' portrait'"
+    size="md"
+  />
+  <div class="persona-body">
+    <span class="persona-name">{{ persona.name }}</span>
+    <span class="persona-traits">{{ traitSummary() }}</span>
+    <span class="persona-badge">Player Persona</span>
+    <div class="persona-details">
+      @if (persona.profile.description) {
+        <p>{{ persona.profile.description }}</p>
+      }
+      @if (persona.profile.background) {
+        <p><strong>Background:</strong> {{ persona.profile.background }}</p>
+      }
+      @if (persona.profile.speakingStyle) {
+        <p><strong>Speaking style:</strong> {{ persona.profile.speakingStyle }}</p>
+      }
+      @if (persona.goals?.length) {
+        <p><strong>Goals:</strong> {{ persona.goals!.join(', ') }}</p>
+      }
+    </div>
+  </div>
+</button>

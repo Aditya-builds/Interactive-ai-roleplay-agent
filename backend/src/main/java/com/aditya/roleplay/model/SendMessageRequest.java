@@ -1,4 +1,4 @@
 package com.aditya.roleplay.model;
 
-public record SendMessageRequest(String content) {
+public record SendMessageRequest(String content, String replyLength) {
 }

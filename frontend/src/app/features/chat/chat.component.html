@@ -12,6 +12,7 @@
       <button
         type="button"
         class="scene-btn"
+        [class.generating]="generatingScene"
         [disabled]="inputDisabled || !conversationId"
         (click)="generateSceneImage()"
       >
@@ -24,6 +25,14 @@
         (click)="startFresh()"
       >
         {{ restarting ? 'Restarting...' : 'Start Fresh' }}
+      </button>
+      <button
+        type="button"
+        class="delete-btn"
+        [disabled]="inputDisabled"
+        (click)="deleteChat()"
+      >
+        {{ deleting ? 'Deleting...' : 'Delete Chat' }}
       </button>
     </div>
   </header>
@@ -52,6 +61,10 @@
             [characterImageUrl]="characterImageUrl"
             [playerName]="playerName"
             [playerImageUrl]="playerImageUrl"
+            [typingMessageId]="typingMessageId"
+            [regenerating]="regenerating"
+            (typingUpdate)="scrollToBottom()"
+            (regenerate)="regenerateLastReply()"
           />
           @if (sending) {
             <div class="typing-indicator">
@@ -60,6 +73,12 @@
               <span class="typing-dot"></span>
               <span class="typing-text">{{ consideringLabel }}</span>
             </div>
+          }
+          @if (generatingScene) {
+            <app-scene-image-loading-card
+              [characterName]="characterName"
+              [characterImageUrl]="characterImageUrl"
+            />
           }
         }
       }
@@ -77,11 +96,36 @@
     @if (sendError) {
       <div class="error-panel">
         <p>Unable to get a response.</p>
-        <button type="button" class="retry-btn" [disabled]="sending" (click)="retrySend()">
+        <button type="button" class="retry-btn" [disabled]="sending || regenerating" (click)="retrySend()">
           Try Again
         </button>
       </div>
     }
+
+    <div class="reply-length-bar">
+      <span class="reply-length-label">Reply length</span>
+      <button
+        type="button"
+        class="length-btn"
+        [class.active]="replyLength === 'short'"
+        [disabled]="inputDisabled"
+        (click)="setReplyLength('short')"
+      >Shorter</button>
+      <button
+        type="button"
+        class="length-btn"
+        [class.active]="replyLength === 'normal'"
+        [disabled]="inputDisabled"
+        (click)="setReplyLength('normal')"
+      >Normal</button>
+      <button
+        type="button"
+        class="length-btn"
+        [class.active]="replyLength === 'long'"
+        [disabled]="inputDisabled"
+        (click)="setReplyLength('long')"
+      >Longer</button>
+    </div>
 
     <app-message-input
       [disabled]="inputDisabled"

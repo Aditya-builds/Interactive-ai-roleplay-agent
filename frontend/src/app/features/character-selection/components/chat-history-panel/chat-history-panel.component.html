@@ -1,0 +1,39 @@
+<section class="history-panel">
+  <header class="history-head">
+    <h2>Chat History</h2>
+    <p>Resume a conversation with any character.</p>
+  </header>
+
+  @if (loading) {
+    <p class="history-empty">Loading conversations…</p>
+  } @else if (conversations.length === 0) {
+    <p class="history-empty">No saved chats yet. Start a story or quick chat to begin.</p>
+  } @else {
+    @for (group of groupedConversations(); track group.characterId) {
+      <div class="history-group">
+        <h3>{{ group.characterName }}</h3>
+        <div class="history-list">
+          @for (conversation of group.items; track conversation.id) {
+            <a class="history-item" [routerLink]="['/chat', conversation.id]">
+              <div class="history-item-main">
+                <span class="history-preview">{{ conversation.preview || 'No messages yet' }}</span>
+                <span class="history-meta">
+                  {{ conversation.messageCount }} messages · {{ formatDate(conversation.updatedAt) }}
+                </span>
+              </div>
+              <button
+                type="button"
+                class="history-delete"
+                title="Delete chat"
+                [disabled]="deletingId === conversation.id"
+                (click)="onDelete($event, conversation.id)"
+              >
+                {{ deletingId === conversation.id ? '…' : 'Delete' }}
+              </button>
+            </a>
+          }
+        </div>
+      </div>
+    }
+  }
+</section>

@@ -1,0 +1,22 @@
+<article class="scene-loading-card" aria-live="polite" aria-busy="true">
+  <div class="scene-loading-header">
+    <app-actor-portrait
+      [src]="characterImageUrl"
+      [name]="characterName"
+      [alt]="characterName"
+      size="sm"
+    />
+    <div class="scene-loading-copy">
+      <span class="scene-loading-title">Generating scene</span>
+      <span class="scene-loading-status">{{ statusLabel }}</span>
+    </div>
+  </div>
+
+  <div class="scene-loading-frame">
+    <div class="scene-loading-shimmer"></div>
+    <div class="scene-loading-overlay">
+      <div class="scene-loading-pulse"></div>
+      <span class="scene-loading-label">Creating image...</span>
+    </div>
+  </div>
+</article>

@@ -186,7 +186,14 @@ public class ConversationService {
     }
 
     public List<ConversationSummary> listConversations() {
-        return storage.listConversations();
+        return listConversations(null);
+    }
+
+    public List<ConversationSummary> listConversations(String characterId) {
+        if (characterId == null || characterId.isBlank()) {
+            return storage.listConversations();
+        }
+        return storage.listConversations(characterId);
     }
 
     public void deleteConversation(String id) {

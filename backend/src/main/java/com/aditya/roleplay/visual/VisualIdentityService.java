@@ -45,10 +45,23 @@ public class VisualIdentityService {
         return List.copyOf(paths);
     }
 
+    public boolean hasResolvableReferences(RoleplayCharacter character, VisualImageStorageService storage) {
+        if (!resolveReferenceImagePaths(character, storage).isEmpty()) {
+            return true;
+        }
+        return storage.canonicalReferenceExists(character.id());
+    }
+
     private static PathFromReference resolveReferencePath(
             String characterId,
             String reference,
             VisualImageStorageService storage) {
+        if (reference.startsWith("/api/visuals/references/" + characterId + "/images/")) {
+            String referenceId = reference.substring(("/api/visuals/references/" + characterId + "/images/").length());
+            return storage.loadCharacterReferenceImage(characterId, referenceId)
+                    .map(path -> new PathFromReference(path.toString()))
+                    .orElse(null);
+        }
         if (reference.startsWith("/api/visuals/references/")) {
             if (storage.canonicalReferenceExists(characterId)) {
                 return new PathFromReference(storage.canonicalReferencePath(characterId).toString());

@@ -47,12 +47,21 @@ class VisualPromptServiceTest {
                 "local-stub",
                 imageStorageService);
 
-        assertTrue(request.prompt().contains("CHARACTER IDENTITY (LOCKED"));
-        assertTrue(request.prompt().contains("guild_hall"));
+        assertTrue(request.prompt().contains("CHARACTER IDENTITY — LOCKED"));
+        assertTrue(request.prompt().contains("MULTI-REFERENCE CHARACTER GENERATION"));
+        assertTrue(request.prompt().contains("Image 1"));
+        assertTrue(request.prompt().contains("CURRENT SCENE"));
+        assertTrue(request.prompt().contains("CURRENT ACTION / POSE"));
         assertTrue(request.prompt().contains("EXPRESSION"));
+        assertTrue(request.prompt().contains("CAMERA"));
+        assertTrue(request.prompt().contains("LIGHTING"));
+        assertTrue(request.prompt().contains("ART STYLE"));
+        assertTrue(request.prompt().contains("guild_hall"));
         assertTrue(request.prompt().contains("RECENT CHAT MOMENT"));
         assertTrue(request.prompt().contains("thanks for meeting me"));
         assertTrue(request.negativePrompt().contains("different face"));
-        assertTrue(!request.referenceImagePaths().isEmpty());
+        assertTrue(request.referenceImagePaths().size() <= 5);
+        assertTrue(request.referenceImagePaths().size() >= 3);
+        assertTrue(request.selectedReferenceIds().contains("aurora-01"));
     }
 }

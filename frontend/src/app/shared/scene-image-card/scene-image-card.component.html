@@ -5,4 +5,16 @@
   @if (caption) {
     <p class="scene-image-caption">{{ caption }}</p>
   }
+  @if (showDebug && debugMetadata) {
+    <details class="scene-image-debug">
+      <summary>Reference debug ({{ debugMetadata.selectedReferenceCount || 0 }} refs)</summary>
+      @if (debugMetadata.referenceSelectionSummary) {
+        <p><strong>Selection:</strong> {{ debugMetadata.referenceSelectionSummary }}</p>
+      }
+      @if (debugMetadata.selectedReferenceIds?.length) {
+        <p><strong>Reference IDs:</strong> {{ debugMetadata.selectedReferenceIds?.join(', ') }}</p>
+      }
+      <p><strong>Provider:</strong> {{ debugMetadata.provider }} / {{ debugMetadata.model }}</p>
+    </details>
+  }
 </article>

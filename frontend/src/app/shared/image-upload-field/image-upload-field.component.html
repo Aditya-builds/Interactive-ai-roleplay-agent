@@ -1,0 +1,22 @@
+<div class="image-upload">
+  <span class="image-upload-label">{{ label }}</span>
+  <div class="image-upload-row">
+    @if (displayUrl) {
+      <img class="image-preview" [src]="displayUrl" alt="Preview" />
+    } @else {
+      <div class="image-placeholder">No image</div>
+    }
+    <div class="image-actions">
+      <label class="upload-btn">
+        {{ uploading ? 'Uploading…' : 'Choose image' }}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" [disabled]="uploading" (change)="onFileSelected($event)" />
+      </label>
+      @if (displayUrl) {
+        <button type="button" class="clear-btn" (click)="clearImage()">Remove</button>
+      }
+    </div>
+  </div>
+  @if (error) {
+    <p class="image-error">{{ error }}</p>
+  }
+</div>

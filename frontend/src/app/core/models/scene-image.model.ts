@@ -9,6 +9,9 @@ export interface GeneratedSceneImage {
   model: string;
   imageUrl: string;
   createdAt: string;
+  selectedReferenceIds?: string[];
+  selectedReferenceCount?: number;
+  referenceSelectionSummary?: string;
 }
 
 export interface GenerateSceneImageResponse {

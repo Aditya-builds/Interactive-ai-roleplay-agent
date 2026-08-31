@@ -46,6 +46,17 @@
   font-size: 0.78rem;
   color: var(--text-muted);
   cursor: default;
+  text-decoration: none;
+}
+
+.nav-link-action {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.nav-link-action:hover {
+  color: var(--text-primary);
+  background: var(--surface-overlay);
 }
 
 /* ── Main layout ── */
@@ -336,7 +347,23 @@
 }
 
 .persona-row {
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.persona-row.expandable {
+  align-items: start;
+}
+
+.create-persona-link {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.create-persona-link:hover {
+  text-decoration: underline;
 }
 
 .character-row {

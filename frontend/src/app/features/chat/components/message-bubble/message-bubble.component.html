@@ -10,7 +10,19 @@
   }
   <div class="bubble">
     <div class="sender">{{ message.role === 'user' ? playerName : characterName }}</div>
-    <div class="content">{{ message.content }}</div>
+    <div class="content" [class.typing]="isTyping">
+      {{ displayedContent }}@if (isTyping) {<span class="typing-cursor" aria-hidden="true"></span>}
+    </div>
+    @if (message.role === 'assistant' && showRegenerate) {
+      <button
+        type="button"
+        class="regenerate-btn"
+        [disabled]="regenerating"
+        (click)="regenerate.emit()"
+      >
+        {{ regenerating ? 'Regenerating…' : 'Regenerate reply' }}
+      </button>
+    }
   </div>
   @if (message.role === 'user') {
     <app-actor-portrait

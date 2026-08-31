@@ -3,7 +3,7 @@
     <span class="brand">Roleplay</span>
     <div class="header-actions">
       <app-api-key-settings />
-      <button type="button" class="nav-link" disabled aria-disabled="true">My Stories</button>
+      <a routerLink="/create" class="nav-link nav-link-action">Create Content</a>
     </div>
   </header>
 
@@ -34,6 +34,13 @@
         <app-loading-spinner label="Loading stories..." [inline]="true" />
       </div>
     } @else if (!loadError) {
+      <app-chat-history-panel
+        [conversations]="chatHistory"
+        [loading]="historyLoading"
+        [deletingId]="deletingConversationId"
+        (deleteConversation)="deleteHistoryConversation($event)"
+      />
+
       @if (selectedStory) {
         <nav class="flow-steps" aria-label="Setup progress">
           <span class="step" [class.active]="currentStep() >= 1" [class.done]="currentStep() > 1">
@@ -124,37 +131,22 @@
             <span class="block-step">Step 2</span>
             <h2>Your Persona</h2>
             <p>This is who <em>you</em> are in the story.</p>
+            <a routerLink="/create/persona" class="create-persona-link">+ Create custom persona</a>
           </header>
 
           @if (personasForStory().length === 0) {
             <div class="state-panel empty">
-              <p>No personas available for this story.</p>
+              <p>No personas available for this story yet.</p>
+              <a routerLink="/create/persona" class="btn-inline">Create your first persona</a>
             </div>
           } @else {
-            <div class="persona-row">
+            <div class="persona-row expandable">
               @for (persona of personasForStory(); track persona.id) {
-                <button
-                  type="button"
-                  class="pick-card persona-pick"
-                  [class.selected]="selectedPersona?.id === persona.id"
-                  (click)="selectPersona(persona)"
-                >
-                  <app-actor-portrait
-                    class="portrait-lg"
-                    [src]="actorImageUrl(persona.imageUrl)"
-                    [name]="persona.name"
-                    [alt]="persona.name + ' portrait'"
-                    size="md"
-                  />
-                  <div class="pick-body">
-                    <span class="pick-name">{{ persona.name }}</span>
-                    <span class="pick-traits">{{ personalitySummary(persona.profile.personality) }}</span>
-                    @if (personaRoleLine(persona)) {
-                      <span class="pick-role">{{ personaRoleLine(persona) }}</span>
-                    }
-                    <span class="pick-badge player">Player Persona</span>
-                  </div>
-                </button>
+                <app-persona-pick-card
+                  [persona]="persona"
+                  [selected]="selectedPersona?.id === persona.id"
+                  (selectPersona)="selectPersona($event)"
+                />
               }
             </div>
           }

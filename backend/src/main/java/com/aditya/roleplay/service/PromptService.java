@@ -6,6 +6,7 @@ import com.aditya.roleplay.llm.LlmRequestKind;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
 import com.aditya.roleplay.model.PlayerPersona;
+import com.aditya.roleplay.model.ReplyLength;
 import com.aditya.roleplay.model.Role;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.Story;
@@ -60,14 +61,28 @@ public class PromptService {
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
             Story story) {
+        return build(character, world, conversation, latestUserMessage,
+                allowedRelationshipTargets, playerPersona, story, ReplyLength.NORMAL);
+    }
+
+    public LlmRequest build(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story,
+            ReplyLength replyLength) {
 
         String systemPrompt = buildSystemPrompt(
-                character, world, conversation, allowedRelationshipTargets, playerPersona, story);
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story, replyLength);
         List<Message> recentMessages = selectRecentMessages(conversation.messages());
         List<LlmMessage> chatMessages = buildChatMessages(
                 recentMessages, latestUserMessage, conversation, allowedRelationshipTargets, playerPersona, story);
 
-        return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode, LlmRequestKind.FULL_TURN);
+        return new LlmRequest(
+                systemPrompt, chatMessages, temperature, maxTokensFor(replyLength), jsonMode, LlmRequestKind.FULL_TURN);
     }
 
     public LlmRequest buildNarrativeRequest(
@@ -78,14 +93,29 @@ public class PromptService {
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
             Story story) {
+        return buildNarrativeRequest(
+                character, world, conversation, latestUserMessage,
+                allowedRelationshipTargets, playerPersona, story, ReplyLength.NORMAL);
+    }
+
+    public LlmRequest buildNarrativeRequest(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story,
+            ReplyLength replyLength) {
 
         String systemPrompt = buildNarrativeSystemPrompt(
-                character, world, conversation, allowedRelationshipTargets, playerPersona, story);
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story, replyLength);
         List<Message> recentMessages = selectRecentMessages(conversation.messages());
         List<LlmMessage> chatMessages = buildChatMessages(
                 recentMessages, latestUserMessage, conversation, allowedRelationshipTargets, playerPersona, story);
 
-        return new LlmRequest(systemPrompt, chatMessages, temperature, maxTokens, jsonMode, LlmRequestKind.NARRATIVE_ONLY);
+        return new LlmRequest(
+                systemPrompt, chatMessages, temperature, maxTokensFor(replyLength), jsonMode, LlmRequestKind.NARRATIVE_ONLY);
     }
 
     public LlmRequest buildStateExtractionRequest(
@@ -114,7 +144,8 @@ public class PromptService {
             Conversation conversation,
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
-            Story story) {
+            Story story,
+            ReplyLength replyLength) {
 
         return buildCharacterContextPrompt(
                 character, world, conversation, allowedRelationshipTargets, playerPersona, story,
@@ -125,7 +156,7 @@ public class PromptService {
                 3. NEVER control %s: do not describe what they do, think, feel, or say unless explicitly written by the player.
                 4. Do not write the player's dialogue or internal monologue.
                 5. Maintain continuity with the scene, memories, events, and recent conversation.
-                6. Write rich, immersive narrative: 2-6 paragraphs when the scene warrants depth; shorter for quick exchanges.
+                6. %s
                 7. Return ONLY valid JSON with a single field. No markdown, no extra text.
 
                 OUTPUT SCHEMA
@@ -133,7 +164,8 @@ public class PromptService {
                   "response": "Narrative reply the player sees, written in character."
                 }
                 """.formatted(character.name(), character.name(),
-                        playerPersona != null ? playerPersona.name() : "the player"));
+                        playerPersona != null ? playerPersona.name() : "the player",
+                        replyLengthInstruction(replyLength)));
     }
 
     private String buildSystemPrompt(
@@ -143,6 +175,18 @@ public class PromptService {
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
             Story story) {
+        return buildSystemPrompt(
+                character, world, conversation, allowedRelationshipTargets, playerPersona, story, ReplyLength.NORMAL);
+    }
+
+    private String buildSystemPrompt(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story,
+            ReplyLength replyLength) {
 
         String personality = character.personality() != null
                 ? String.join(", ", character.personality())
@@ -203,7 +247,7 @@ public class PromptService {
                 6. Do not invent contradictory facts about the character or world.
                 7. Do not force romantic progression; let relationships develop naturally.
                 8. Propose stateChanges every turn when the interaction affects mood, relationship, health, or scene dynamics. Narrative and stateChanges must agree.
-                9. Write rich, immersive narrative responses: 2-6 paragraphs when the scene warrants depth; shorter only for quick exchanges.
+                9. %s
                 10. Return ONLY valid JSON matching the schema below. No markdown, no extra text.
                 11. You cannot modify the player persona's health, status, or emotion via stateChanges — only the player declares those.
 
@@ -276,6 +320,7 @@ public class PromptService {
                 character.name(),
                 character.name(),
                 playerName,
+                replyLengthInstruction(replyLength),
                 maxRelationshipDelta,
                 playerControlId,
                 character.name(),
@@ -534,5 +579,21 @@ public class PromptService {
                 promptContextService.buildTurnContext(
                         conversation, latestUserMessage, allowedRelationshipTargets, playerPersona, story)));
         return result;
+    }
+
+    private int maxTokensFor(ReplyLength replyLength) {
+        return switch (replyLength) {
+            case SHORT -> Math.max(600, maxTokens / 3);
+            case LONG -> Math.min(4000, maxTokens + 800);
+            case NORMAL -> maxTokens;
+        };
+    }
+
+    private static String replyLengthInstruction(ReplyLength replyLength) {
+        return switch (replyLength) {
+            case SHORT -> "Keep replies concise: 1-2 short paragraphs, quick exchanges, minimal exposition.";
+            case LONG -> "Write longer, richer replies: 4-8 paragraphs when the scene warrants depth, vivid sensory detail.";
+            case NORMAL -> "Write rich, immersive narrative: 2-6 paragraphs when the scene warrants depth; shorter for quick exchanges.";
+        };
     }
 }

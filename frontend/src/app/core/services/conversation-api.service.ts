@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Conversation, SendMessageResponse } from '../models/conversation.model';
+import {
+  Conversation,
+  ConversationSummary,
+  ReplyLength,
+  SendMessageResponse
+} from '../models/conversation.model';
 import { CreateConversationRequest } from '../models/roleplay-setup.model';
 import { apiUrl } from '../config/api-url';
 
@@ -11,11 +16,18 @@ export class ConversationApiService {
 
   constructor(private http: HttpClient) {}
 
+  listConversations(characterId?: string): Observable<ConversationSummary[]> {
+    let params = new HttpParams();
+    if (characterId) {
+      params = params.set('characterId', characterId);
+    }
+    return this.http.get<ConversationSummary[]>(this.baseUrl, { params });
+  }
+
   createConversation(request: CreateConversationRequest): Observable<Conversation> {
     return this.http.post<Conversation>(this.baseUrl, request);
   }
 
-  /** @deprecated Use createConversation with CreateConversationRequest */
   createLegacyConversation(characterId: string): Observable<Conversation> {
     return this.createConversation({ characterId });
   }
@@ -24,8 +36,24 @@ export class ConversationApiService {
     return this.http.get<Conversation>(`${this.baseUrl}/${id}`);
   }
 
-  sendMessage(conversationId: string, content: string): Observable<SendMessageResponse> {
-    return this.http.post<SendMessageResponse>(`${this.baseUrl}/${conversationId}/messages`, { content });
+  sendMessage(
+    conversationId: string,
+    content: string,
+    replyLength: ReplyLength = 'normal'
+  ): Observable<SendMessageResponse> {
+    return this.http.post<SendMessageResponse>(`${this.baseUrl}/${conversationId}/messages`, {
+      content,
+      replyLength
+    });
+  }
+
+  regenerateMessage(
+    conversationId: string,
+    replyLength: ReplyLength = 'normal'
+  ): Observable<SendMessageResponse> {
+    return this.http.post<SendMessageResponse>(`${this.baseUrl}/${conversationId}/messages/regenerate`, {
+      replyLength
+    });
   }
 
   deleteConversation(conversationId: string): Observable<void> {

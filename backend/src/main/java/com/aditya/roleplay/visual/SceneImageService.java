@@ -15,6 +15,7 @@ import com.aditya.roleplay.service.ConversationService;
 import com.aditya.roleplay.visual.director.VisualDirectorClient;
 import com.aditya.roleplay.visual.director.VisualDirectorContextBuilder;
 import com.aditya.roleplay.visual.director.VisualPromptCompilerService;
+import com.aditya.roleplay.visual.reference.CharacterReferenceLibraryService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -62,6 +63,9 @@ public class SceneImageService {
     @Inject
     VisualPromptCompilerService visualPromptCompilerService;
 
+    @Inject
+    CharacterReferenceLibraryService referenceLibraryService;
+
     @ConfigProperty(name = "roleplay.visual.enabled", defaultValue = "true")
     boolean visualEnabled;
 
@@ -90,7 +94,8 @@ public class SceneImageService {
         RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
         World world = characterService.requireWorld(conversation.worldId());
 
-        if (visualIdentityService.resolveReferenceImagePaths(character, imageStorageService).isEmpty()) {
+        if (!visualIdentityService.hasResolvableReferences(character, imageStorageService)
+                && !referenceLibraryService.hasLibrary(character.id())) {
             throw new RoleplayException(
                     "No canonical reference image configured for character: " + character.id(),
                     "VISUAL_REFERENCE_NOT_FOUND",
@@ -165,7 +170,12 @@ public class SceneImageService {
                 generationResponse.provider(),
                 generationResponse.model(),
                 imageUrl,
-                Instant.now());
+                Instant.now(),
+                generationRequest.selectedReferenceIds(),
+                generationRequest.selectedReferenceIds().isEmpty()
+                        ? generationRequest.referenceImagePaths().size()
+                        : generationRequest.selectedReferenceIds().size(),
+                generationRequest.referenceSelectionSummary());
 
         try {
             imageStorageService.saveGeneratedImage(
@@ -178,12 +188,14 @@ public class SceneImageService {
         }
 
         LOG.infof(
-                "visual_generation_complete conversationId=%s planner=%s provider=%s model=%s promptLength=%d directorMs=%d imageMs=%d success=true",
+                "visual_generation_complete conversationId=%s planner=%s provider=%s model=%s promptLength=%d referenceCount=%d referenceIds=%s directorMs=%d imageMs=%d success=true",
                 conversationId,
                 plannerVersion,
                 generationResponse.provider(),
                 generationResponse.model(),
                 generationRequest.prompt().length(),
+                generationRequest.referenceImagePaths().size(),
+                generationRequest.selectedReferenceIds(),
                 directorMs,
                 imageMs);
 

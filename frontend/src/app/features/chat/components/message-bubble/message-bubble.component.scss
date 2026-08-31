@@ -73,3 +73,39 @@
 .bubble-row.assistant .content {
   color: var(--text-primary);
 }
+
+.content.typing {
+  min-height: 1.6em;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--text-primary);
+  animation: typing-cursor-blink 0.9s step-end infinite;
+}
+
+@keyframes typing-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.regenerate-btn {
+  margin-top: 0.45rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.regenerate-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong, #666);
+}

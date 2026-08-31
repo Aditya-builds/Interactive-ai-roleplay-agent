@@ -1,0 +1,104 @@
+.create-panel {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.create-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.create-head p {
+  margin: 0.35rem 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.create-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.create-tabs button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.create-tabs button.active {
+  background: var(--accent, #7c6cff);
+  border-color: transparent;
+  color: #fff;
+}
+
+.create-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.create-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.create-form input,
+.create-form textarea,
+.create-form select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.inline-field {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inline-field input {
+  flex: 1;
+}
+
+.btn-small {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-overlay);
+  cursor: pointer;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.create-error {
+  margin: 0.75rem 0 0;
+  color: #e57373;
+  font-size: 0.85rem;
+}
+
+.create-panel .btn-primary {
+  margin-top: 1rem;
+}

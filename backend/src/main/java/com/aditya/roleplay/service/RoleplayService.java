@@ -5,6 +5,7 @@ import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.Message;
 import com.aditya.roleplay.model.PlayerPersona;
+import com.aditya.roleplay.model.ReplyLength;
 import com.aditya.roleplay.model.Role;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.SendMessageResponse;
@@ -15,6 +16,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -55,14 +58,67 @@ public class RoleplayService {
     RelationshipService relationshipService;
 
     public SendMessageResponse processTurn(String conversationId, String content) {
-        return processTurn(conversationId, content, null);
+        return processTurn(conversationId, content, null, null);
     }
 
     public SendMessageResponse processTurn(String conversationId, String content, String userApiKey) {
-        validateContent(content);
-        String trimmed = content.trim();
+        return processTurn(conversationId, content, userApiKey, null);
+    }
 
+    public SendMessageResponse processTurn(
+            String conversationId,
+            String content,
+            String userApiKey,
+            String replyLengthValue) {
+        validateContent(content);
         Conversation conversation = conversationService.getConversation(conversationId);
+        return processTurnInternal(
+                conversation,
+                content.trim(),
+                ReplyLength.fromString(replyLengthValue),
+                userApiKey,
+                true);
+    }
+
+    public SendMessageResponse regenerateLastTurn(
+            String conversationId,
+            String replyLengthValue,
+            String userApiKey) {
+        Conversation conversation = conversationService.getConversation(conversationId);
+        List<Message> messages = new ArrayList<>(conversation.messages());
+
+        while (!messages.isEmpty() && messages.get(messages.size() - 1).role() == Role.ASSISTANT) {
+            messages.remove(messages.size() - 1);
+        }
+
+        Message lastUserMessage = null;
+        for (int index = messages.size() - 1; index >= 0; index--) {
+            if (messages.get(index).role() == Role.USER) {
+                lastUserMessage = messages.get(index);
+                break;
+            }
+        }
+
+        if (lastUserMessage == null) {
+            throw new RoleplayException("No user message to regenerate from", "INVALID_REQUEST", 400);
+        }
+
+        Conversation trimmedConversation = conversation.withMessages(messages);
+        return processTurnInternal(
+                trimmedConversation,
+                lastUserMessage.content(),
+                ReplyLength.fromString(replyLengthValue),
+                userApiKey,
+                false);
+    }
+
+    private SendMessageResponse processTurnInternal(
+            Conversation conversation,
+            String trimmedContent,
+            ReplyLength replyLength,
+            String userApiKey,
+            boolean appendUserMessage) {
+
         RoleplayCharacter character = characterService.requireCharacter(conversation.characterId());
         World world = characterService.requireWorld(conversation.worldId());
         conversation = ensureRuntimeFields(conversation, character);
@@ -76,14 +132,12 @@ public class RoleplayService {
                 conversation.playerPersonaId());
 
         LlmTurnResult turnResult = roleplayLlmService.generateTurnResult(
-                character, world, conversation, trimmed,
-                allowedRelationshipTargets, playerPersona, story, userApiKey);
+                character, world, conversation, trimmedContent,
+                allowedRelationshipTargets, playerPersona, story, userApiKey, replyLength);
 
-        Message userMessage = new Message(
-                UUID.randomUUID().toString(),
-                Role.USER,
-                trimmed,
-                Instant.now());
+        Message userMessage = appendUserMessage
+                ? new Message(UUID.randomUUID().toString(), Role.USER, trimmedContent, Instant.now())
+                : null;
 
         StateChangeProcessor.ConversationState updatedState = stateChangeProcessor.apply(
                 new StateChangeProcessor.ConversationState(
@@ -105,8 +159,11 @@ public class RoleplayService {
                 turnResult.response().trim(),
                 Instant.now());
 
-        conversation = conversation
-                .appendMessage(userMessage)
+        Conversation updatedConversation = conversation;
+        if (userMessage != null) {
+            updatedConversation = updatedConversation.appendMessage(userMessage);
+        }
+        updatedConversation = updatedConversation
                 .appendMessage(assistantMessage)
                 .withCharacterState(updatedState.characterState())
                 .withScene(updatedState.scene())
@@ -115,11 +172,11 @@ public class RoleplayService {
                 .withMemories(updatedState.memories())
                 .withUpdatedAt(Instant.now());
 
-        conversationService.save(conversation);
+        conversationService.save(updatedConversation);
 
         return new SendMessageResponse(
                 assistantMessage,
-                conversation.id(),
+                updatedConversation.id(),
                 updatedState.scene(),
                 updatedState.characterState(),
                 updatedState.relationships());

@@ -1,0 +1,178 @@
+.create-page {
+  min-height: 100vh;
+  background: var(--surface-base);
+}
+
+.create-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.create-header h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.2rem;
+}
+
+.create-header app-api-key-settings {
+  margin-left: auto;
+}
+
+.create-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.25rem 1.15rem 2rem;
+}
+
+.hub-copy {
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+}
+
+.hub-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.hub-card {
+  display: block;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.hub-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.hub-card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.hub-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.create-form-section {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.create-form-section label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.create-form-section input,
+.create-form-section textarea,
+.create-form-section select {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.inline-field {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inline-field input {
+  flex: 1;
+}
+
+.btn-small,
+.btn-ghost,
+.btn-primary {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.btn-small {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+.btn-ghost {
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.btn-primary {
+  border: none;
+  background: var(--accent, #7c6cff);
+  color: #fff;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.form-error {
+  color: #e57373;
+  font-size: 0.85rem;
+}
+
+.form-success {
+  color: #81c784;
+  font-size: 0.85rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}

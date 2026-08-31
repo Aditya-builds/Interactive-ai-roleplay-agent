@@ -1,0 +1,129 @@
+<div class="create-page">
+  <header class="create-header">
+    <a routerLink="/" class="back-link" title="Back home">←</a>
+    <div>
+      <p class="eyebrow">Studio</p>
+      <h1>{{ pageTitle() }}</h1>
+    </div>
+    <app-api-key-settings />
+  </header>
+
+  <main class="create-main">
+    @if (!activeType) {
+      <section class="create-hub">
+        <p class="hub-copy">Build your own stories, personas, and AI characters. IDs are generated automatically.</p>
+        <div class="hub-grid">
+          <a routerLink="/create/story" class="hub-card">
+            <h2>Story</h2>
+            <p>Define a world premise, opening scene, and the characters who appear in it.</p>
+          </a>
+          <a routerLink="/create/persona" class="hub-card">
+            <h2>Persona</h2>
+            <p>Create who you play as — your background, personality, and portrait.</p>
+          </a>
+          <a routerLink="/create/character" class="hub-card">
+            <h2>AI Character</h2>
+            <p>Add a new AI-controlled character with their own voice and look.</p>
+          </a>
+        </div>
+      </section>
+    }
+
+    @if (activeType === 'story') {
+      <section class="create-form-section">
+        <label>Title <input [(ngModel)]="storyForm.title" placeholder="Story title" /></label>
+        <label>World
+          <select [(ngModel)]="storyForm.worldId">
+            @for (world of worlds; track world) {
+              <option [value]="world">{{ world }}</option>
+            }
+          </select>
+        </label>
+        <label>Premise <textarea [(ngModel)]="storyForm.premise" rows="3" placeholder="What is this story about?"></textarea></label>
+        <label>Opening narrative <textarea [(ngModel)]="storyForm.openingNarrative" rows="4" placeholder="How does the story begin?"></textarea></label>
+        <label>Starting location <input [(ngModel)]="storyForm.startingLocation" placeholder="guild_hall" /></label>
+        <div class="inline-field">
+          <input [(ngModel)]="storyCharacterName" placeholder="Character name to include" />
+          <button type="button" class="btn-small" (click)="addStoryCharacter()">Add character</button>
+        </div>
+        @if ((storyForm.startingCharacterNames?.length ?? 0) > 0) {
+          <div class="chip-row">
+            @for (name of storyForm.startingCharacterNames; track name) {
+              <button type="button" class="chip" (click)="removeStoryCharacter(name)">{{ name }} ×</button>
+            }
+          </div>
+        }
+        <div class="inline-field">
+          <input [(ngModel)]="storyRuleInput" placeholder="Story rule" />
+          <button type="button" class="btn-small" (click)="addStoryRule()">Add rule</button>
+        </div>
+      </section>
+    }
+
+    @if (activeType === 'persona') {
+      <section class="create-form-section">
+        <app-image-upload-field
+          label="Persona portrait"
+          kind="personas"
+          [(imageUrl)]="personaForm.imageUrl"
+        />
+        <label>Name <input [(ngModel)]="personaForm.name" placeholder="Your character name" /></label>
+        <label>World
+          <select [(ngModel)]="personaForm.worldId">
+            @for (world of worlds; track world) {
+              <option [value]="world">{{ world }}</option>
+            }
+          </select>
+        </label>
+        <label>Description <textarea [(ngModel)]="personaForm.description" rows="3"></textarea></label>
+        <label>Background <textarea [(ngModel)]="personaForm.background" rows="2"></textarea></label>
+        <label>Speaking style <input [(ngModel)]="personaForm.speakingStyle" /></label>
+        <div class="inline-field">
+          <input [(ngModel)]="personaTraitInput" placeholder="Personality trait" />
+          <button type="button" class="btn-small" (click)="addPersonaTrait()">Add trait</button>
+        </div>
+      </section>
+    }
+
+    @if (activeType === 'character') {
+      <section class="create-form-section">
+        <app-image-upload-field
+          label="Character portrait"
+          kind="characters"
+          [(imageUrl)]="characterForm.imageUrl"
+        />
+        <label>Name <input [(ngModel)]="characterForm.name" placeholder="Character name" /></label>
+        <label>World
+          <select [(ngModel)]="characterForm.worldId">
+            @for (world of worlds; track world) {
+              <option [value]="world">{{ world }}</option>
+            }
+          </select>
+        </label>
+        <label>Background <textarea [(ngModel)]="characterForm.background" rows="3"></textarea></label>
+        <label>Speaking style <input [(ngModel)]="characterForm.speakingStyle" /></label>
+        <label>Opening message <textarea [(ngModel)]="characterForm.openingMessage" rows="2"></textarea></label>
+        <div class="inline-field">
+          <input [(ngModel)]="characterTraitInput" placeholder="Personality trait" />
+          <button type="button" class="btn-small" (click)="addCharacterTrait()">Add trait</button>
+        </div>
+      </section>
+    }
+
+    @if (error) {
+      <p class="form-error">{{ error }}</p>
+    }
+    @if (savedMessage) {
+      <p class="form-success">{{ savedMessage }}</p>
+    }
+
+    @if (activeType) {
+      <div class="form-actions">
+        <a routerLink="/create" class="btn-ghost">Back</a>
+        <button type="button" class="btn-primary" [disabled]="saving" (click)="save()">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    }
+  </main>
+</div>

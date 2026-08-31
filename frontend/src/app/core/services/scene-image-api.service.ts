@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { apiUrl } from '../config/api-url';
-import { GenerateSceneImageResponse } from '../models/scene-image.model';
+import { GenerateSceneImageResponse, GeneratedSceneImage } from '../models/scene-image.model';
 
 @Injectable({ providedIn: 'root' })
 export class SceneImageApiService {
@@ -13,6 +13,10 @@ export class SceneImageApiService {
       apiUrl(`/api/conversations/${conversationId}/scene-images`),
       {}
     );
+  }
+
+  getSceneImageMetadata(sceneImageId: string): Observable<GeneratedSceneImage> {
+    return this.http.get<GeneratedSceneImage>(apiUrl(`/api/scene-images/${sceneImageId}`));
   }
 
   sceneImageContentUrl(sceneImageId: string): string {

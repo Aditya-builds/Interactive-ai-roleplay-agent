@@ -4,6 +4,8 @@
       <app-scene-image-card
         [imageSrc]="sceneImageUrl(message.sceneImageId!)"
         [caption]="message.content"
+        [sceneImageId]="message.sceneImageId!"
+        [showDebug]="showSceneImageDebug"
       />
     } @else {
       <app-message-bubble
@@ -12,6 +14,11 @@
         [characterImageUrl]="characterImageUrl"
         [playerName]="playerName"
         [playerImageUrl]="playerImageUrl"
+        [animateTyping]="message.id === typingMessageId"
+        [showRegenerate]="message.id === lastAssistantMessageId()"
+        [regenerating]="regenerating"
+        (typingUpdate)="typingUpdate.emit()"
+        (regenerate)="regenerate.emit()"
       />
     }
   }

@@ -4,6 +4,7 @@ import com.aditya.roleplay.exception.RoleplayException;
 import com.aditya.roleplay.model.CharacterListEntry;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.ConversationSummary;
+import com.aditya.roleplay.model.Message;
 import com.aditya.roleplay.model.PlayerPersona;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.Story;
@@ -189,6 +190,10 @@ public class JsonStorageService {
     }
 
     public List<ConversationSummary> listConversations() {
+        return listConversations(null);
+    }
+
+    public List<ConversationSummary> listConversations(String characterIdFilter) {
         if (!Files.exists(conversationsPath)) {
             return List.of();
         }
@@ -200,10 +205,12 @@ public class JsonStorageService {
                             JsonNode root = objectMapper.readTree(path.toFile());
                             JsonNode migrated = ConversationJsonMigration.migrate(objectMapper, root);
                             Conversation conversation = objectMapper.treeToValue(migrated, Conversation.class);
-                            summaries.add(new ConversationSummary(
-                                    conversation.id(),
-                                    conversation.characterId(),
-                                    conversation.updatedAt()));
+                            if (characterIdFilter != null
+                                    && !characterIdFilter.isBlank()
+                                    && !characterIdFilter.equals(conversation.characterId())) {
+                                return;
+                            }
+                            summaries.add(toSummary(conversation));
                         } catch (IOException ignored) {
                         }
                     });
@@ -212,6 +219,100 @@ public class JsonStorageService {
         }
         summaries.sort(Comparator.comparing(ConversationSummary::updatedAt).reversed());
         return summaries;
+    }
+
+    private ConversationSummary toSummary(Conversation conversation) {
+        String preview = "";
+        if (!conversation.messages().isEmpty()) {
+            Message last = conversation.messages().get(conversation.messages().size() - 1);
+            preview = truncate(last.content(), 120);
+        }
+        String characterName = loadCharacter(conversation.characterId())
+                .map(RoleplayCharacter::name)
+                .orElse(conversation.characterId());
+        return new ConversationSummary(
+                conversation.id(),
+                conversation.characterId(),
+                characterName,
+                preview,
+                conversation.messages().size(),
+                conversation.updatedAt());
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+        return normalized.substring(0, maxLength - 1).trim() + "…";
+    }
+
+    public RoleplayCharacter saveCharacter(RoleplayCharacter character) {
+        Path charactersDir = dataPath.resolve("characters");
+        try {
+            Files.createDirectories(charactersDir);
+            Path target = charactersDir.resolve(character.id() + ".json");
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(target.toFile(), character);
+            appendCharacterIndex(character);
+            return character;
+        } catch (IOException e) {
+            throw new RoleplayException("Failed to save character: " + character.id(), "STORAGE_ERROR", 500);
+        }
+    }
+
+    public PlayerPersona savePersona(PlayerPersona persona) {
+        Path personasDir = dataPath.resolve("personas");
+        try {
+            Files.createDirectories(personasDir);
+            Path target = personasDir.resolve(persona.id() + ".json");
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(target.toFile(), persona);
+            appendStringIndex(dataPath.resolve("personas.json"), persona.id());
+            return persona;
+        } catch (IOException e) {
+            throw new RoleplayException("Failed to save persona: " + persona.id(), "STORAGE_ERROR", 500);
+        }
+    }
+
+    public Story saveStory(Story story) {
+        Path storiesDir = dataPath.resolve("stories");
+        try {
+            Files.createDirectories(storiesDir);
+            Path target = storiesDir.resolve(story.id() + ".json");
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(target.toFile(), story);
+            appendStringIndex(dataPath.resolve("stories.json"), story.id());
+            return story;
+        } catch (IOException e) {
+            throw new RoleplayException("Failed to save story: " + story.id(), "STORAGE_ERROR", 500);
+        }
+    }
+
+    public List<String> listWorldIds() {
+        return readStringIdList(dataPath.resolve("worlds.json"));
+    }
+
+    private void appendCharacterIndex(RoleplayCharacter character) throws IOException {
+        Path indexFile = dataPath.resolve("characters.json");
+        List<CharacterListEntry> entries = loadCharacterIndex();
+        boolean exists = entries.stream().anyMatch(entry -> entry.id().equals(character.id()));
+        if (exists) {
+            return;
+        }
+        List<CharacterListEntry> updated = new ArrayList<>(entries);
+        updated.add(new CharacterListEntry(character.id(), character.name(), character.worldId(), character.imageUrl()));
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(indexFile.toFile(), updated);
+    }
+
+    private void appendStringIndex(Path indexPath, String id) throws IOException {
+        List<String> ids = readStringIdList(indexPath);
+        if (ids.contains(id)) {
+            return;
+        }
+        List<String> updated = new ArrayList<>(ids);
+        updated.add(id);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(indexPath.toFile(), updated);
     }
 
     public void deleteConversation(String id) {

@@ -1,0 +1,86 @@
+.persona-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 220px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  transition: border-color 0.2s ease, min-height 0.25s ease, box-shadow 0.25s ease;
+}
+
+.persona-card:hover,
+.persona-card:focus-visible {
+  border-color: var(--accent);
+  min-height: 320px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.persona-card.selected {
+  border-color: var(--accent);
+}
+
+.persona-portrait {
+  display: block;
+}
+
+.persona-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem 0.85rem;
+}
+
+.persona-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.persona-traits {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.persona-badge {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.persona-details {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin-top 0.2s ease;
+}
+
+.persona-card:hover .persona-details,
+.persona-card:focus-visible .persona-details,
+.persona-card.selected .persona-details {
+  max-height: 240px;
+  opacity: 1;
+  margin-top: 0.45rem;
+}
+
+.persona-details p {
+  margin: 0 0 0.45rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.persona-details strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}

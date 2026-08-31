@@ -1,21 +1,32 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { CharacterApiService } from '../../core/services/character-api.service';
 import { ConversationApiService } from '../../core/services/conversation-api.service';
 import { PersonaApiService, StoryApiService } from '../../core/services/roleplay-setup-api.service';
 import { RoleplayCharacter } from '../../core/models/character.model';
+import { ConversationSummary } from '../../core/models/conversation.model';
 import { PlayerPersona, Story } from '../../core/models/roleplay-setup.model';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import { ActorPortraitComponent } from '../../shared/actor-portrait/actor-portrait.component';
 import { ApiKeySettingsComponent } from '../../shared/api-key-settings/api-key-settings.component';
+import { ChatHistoryPanelComponent } from './components/chat-history-panel/chat-history-panel.component';
+import { PersonaPickCardComponent } from './components/persona-pick-card/persona-pick-card.component';
 import { resolveActorImageUrl } from '../../core/config/api-url';
 
 @Component({
   selector: 'app-character-selection',
   standalone: true,
-  imports: [CommonModule, LoadingSpinnerComponent, ActorPortraitComponent, ApiKeySettingsComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    LoadingSpinnerComponent,
+    ActorPortraitComponent,
+    ApiKeySettingsComponent,
+    ChatHistoryPanelComponent,
+    PersonaPickCardComponent
+  ],
   templateUrl: './character-selection.component.html',
   styleUrl: './character-selection.component.scss'
 })
@@ -33,6 +44,9 @@ export class CharacterSelectionComponent implements OnInit {
   loadError = false;
   startError = false;
   quickStartOpen = false;
+  chatHistory: ConversationSummary[] = [];
+  historyLoading = false;
+  deletingConversationId: string | null = null;
 
   constructor(
     private storyApi: StoryApiService,
@@ -44,6 +58,36 @@ export class CharacterSelectionComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSetupData();
+    this.loadChatHistory();
+  }
+
+  loadChatHistory(): void {
+    this.historyLoading = true;
+    this.conversationApi.listConversations().subscribe({
+      next: conversations => {
+        this.chatHistory = conversations;
+        this.historyLoading = false;
+      },
+      error: () => {
+        this.historyLoading = false;
+      }
+    });
+  }
+
+  deleteHistoryConversation(conversationId: string): void {
+    if (!confirm('Delete this chat permanently?')) {
+      return;
+    }
+    this.deletingConversationId = conversationId;
+    this.conversationApi.deleteConversation(conversationId).subscribe({
+      next: () => {
+        this.chatHistory = this.chatHistory.filter(item => item.id !== conversationId);
+        this.deletingConversationId = null;
+      },
+      error: () => {
+        this.deletingConversationId = null;
+      }
+    });
   }
 
   loadSetupData(): void {

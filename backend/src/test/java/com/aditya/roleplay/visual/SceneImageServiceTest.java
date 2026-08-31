@@ -40,7 +40,7 @@ class SceneImageServiceTest {
 
         assertNotNull(response.sceneImage());
         assertNotNull(response.sceneImageMessage().sceneImageId());
-        assertTrue(response.sceneImage().prompt().contains("CHARACTER IDENTITY (LOCKED"));
+        assertTrue(response.sceneImage().prompt().contains("CHARACTER IDENTITY"));
         assertTrue(response.sceneImage().imageUrl().startsWith("/api/scene-images/"));
 
         Conversation saved = storage.loadConversation(conversation.id()).orElseThrow();

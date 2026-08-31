@@ -9,6 +9,7 @@ import com.aditya.roleplay.llm.LlmTurnResult;
 import com.aditya.roleplay.llm.LlmTurnResultParser;
 import com.aditya.roleplay.model.Conversation;
 import com.aditya.roleplay.model.PlayerPersona;
+import com.aditya.roleplay.model.ReplyLength;
 import com.aditya.roleplay.model.RoleplayCharacter;
 import com.aditya.roleplay.model.Story;
 import com.aditya.roleplay.model.World;
@@ -42,15 +43,30 @@ public class RoleplayLlmService {
             PlayerPersona playerPersona,
             Story story,
             String userApiKey) {
+        return generateTurnResult(
+                character, world, conversation, latestUserMessage,
+                allowedRelationshipTargets, playerPersona, story, userApiKey, ReplyLength.NORMAL);
+    }
+
+    public LlmTurnResult generateTurnResult(
+            RoleplayCharacter character,
+            World world,
+            Conversation conversation,
+            String latestUserMessage,
+            Set<String> allowedRelationshipTargets,
+            PlayerPersona playerPersona,
+            Story story,
+            String userApiKey,
+            ReplyLength replyLength) {
 
         if (twoPhase) {
             return generateTwoPhaseTurnResult(
                     character, world, conversation, latestUserMessage,
-                    allowedRelationshipTargets, playerPersona, story, userApiKey);
+                    allowedRelationshipTargets, playerPersona, story, userApiKey, replyLength);
         }
         return generateSinglePhaseTurnResult(
                 character, world, conversation, latestUserMessage,
-                allowedRelationshipTargets, playerPersona, story, userApiKey);
+                allowedRelationshipTargets, playerPersona, story, userApiKey, replyLength);
     }
 
     private LlmTurnResult generateSinglePhaseTurnResult(
@@ -61,11 +77,12 @@ public class RoleplayLlmService {
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
             Story story,
-            String userApiKey) {
+            String userApiKey,
+            ReplyLength replyLength) {
 
         LlmRequest request = promptService.build(
                 character, world, conversation, latestUserMessage,
-                allowedRelationshipTargets, playerPersona, story);
+                allowedRelationshipTargets, playerPersona, story, replyLength);
         LlmResponse response = llmClient.complete(request, userApiKey);
 
         if (!response.structuredParseSuccess() || response.turnResult() == null) {
@@ -82,11 +99,12 @@ public class RoleplayLlmService {
             Set<String> allowedRelationshipTargets,
             PlayerPersona playerPersona,
             Story story,
-            String userApiKey) {
+            String userApiKey,
+            ReplyLength replyLength) {
 
         LlmRequest narrativeRequest = promptService.buildNarrativeRequest(
                 character, world, conversation, latestUserMessage,
-                allowedRelationshipTargets, playerPersona, story);
+                allowedRelationshipTargets, playerPersona, story, replyLength);
         LlmResponse narrativeResponse = llmClient.complete(narrativeRequest, userApiKey);
 
         String narrative = resolveNarrative(narrativeResponse);

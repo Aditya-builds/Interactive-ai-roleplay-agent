@@ -7,20 +7,27 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
 public class OpenAiCompatibleImageGenerationClient {
+
+    private static final Logger LOG = Logger.getLogger(OpenAiCompatibleImageGenerationClient.class);
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
@@ -85,6 +92,59 @@ public class OpenAiCompatibleImageGenerationClient {
             prompt = prompt + "\n\nAvoid: " + request.negativePrompt();
         }
 
+        List<Path> referencePaths = resolveExistingReferencePaths(request.referenceImagePaths());
+        if (!referencePaths.isEmpty() && isGptImageModel(model)) {
+            LOG.infof(
+                    "visual_image_api_edits model=%s referenceCount=%d referenceIds=%s",
+                    model,
+                    referencePaths.size(),
+                    request.selectedReferenceIds());
+            return callImageEditsApi(resolvedBaseUrl, resolvedApiKey, model, prompt, request, referencePaths);
+        }
+
+        if (!referencePaths.isEmpty()) {
+            LOG.warnf(
+                    "visual_image_api_generations_without_references model=%s referenceCount=%d",
+                    model,
+                    referencePaths.size());
+        }
+
+        return callImageGenerationsApi(resolvedBaseUrl, resolvedApiKey, model, prompt, request);
+    }
+
+    private ImageGenerationResponse callImageEditsApi(
+            String baseUrl,
+            String apiKey,
+            String model,
+            String prompt,
+            ImageGenerationRequest request,
+            List<Path> referencePaths) throws Exception {
+        String size = mapSize(request.width(), request.height(), model);
+        Map<String, String> fields = ImageEditMultipartBuilder.orderedFields(model, prompt, size, true);
+
+        HttpResponse<String> response = postImageEdits(baseUrl, apiKey, referencePaths, fields, "image");
+        if (response.statusCode() == 400
+                && response.body() != null
+                && response.body().contains("image")) {
+            response = postImageEdits(baseUrl, apiKey, referencePaths, fields, "image[]");
+        }
+
+        if (response.statusCode() != 200) {
+            throw new RoleplayException(
+                    "Image edits API error (" + response.statusCode() + "): " + response.body(),
+                    "VISUAL_GENERATION_ERROR",
+                    response.statusCode() >= 500 ? 502 : 400);
+        }
+
+        return parseImageResponse(response.body(), providerName, model);
+    }
+
+    private ImageGenerationResponse callImageGenerationsApi(
+            String baseUrl,
+            String apiKey,
+            String model,
+            String prompt,
+            ImageGenerationRequest request) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("prompt", prompt);
@@ -98,13 +158,13 @@ public class OpenAiCompatibleImageGenerationClient {
             body.put("response_format", "b64_json");
         }
 
-        HttpResponse<String> response = postImageGeneration(resolvedBaseUrl, resolvedApiKey, body);
+        HttpResponse<String> response = postImageGeneration(baseUrl, apiKey, body);
         if (response.statusCode() == 400
                 && response.body() != null
                 && response.body().contains("response_format")
                 && body.containsKey("response_format")) {
             body.remove("response_format");
-            response = postImageGeneration(resolvedBaseUrl, resolvedApiKey, body);
+            response = postImageGeneration(baseUrl, apiKey, body);
         }
 
         if (response.statusCode() != 200) {
@@ -114,7 +174,42 @@ public class OpenAiCompatibleImageGenerationClient {
                     response.statusCode() >= 500 ? 502 : 400);
         }
 
-        ImageApiResponse parsed = objectMapper.readValue(response.body(), ImageApiResponse.class);
+        return parseImageResponse(response.body(), providerName, model);
+    }
+
+    private HttpResponse<String> postImageEdits(
+            String baseUrl,
+            String apiKey,
+            List<Path> referencePaths,
+            Map<String, String> fields,
+            String imageFieldName) throws Exception {
+        String boundary = "----OpenAIFormBoundary" + UUID.randomUUID();
+        byte[] body = ImageEditMultipartBuilder.build(boundary, referencePaths, fields, imageFieldName);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/images/edits"))
+                .timeout(Duration.ofSeconds(180))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+        return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> postImageGeneration(String baseUrl, String apiKey, Map<String, Object> body)
+            throws Exception {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/images/generations"))
+                .timeout(Duration.ofSeconds(120))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                .build();
+        return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private ImageGenerationResponse parseImageResponse(String responseBody, String provider, String model) throws Exception {
+        ImageApiResponse parsed = objectMapper.readValue(responseBody, ImageApiResponse.class);
         if (parsed.data == null || parsed.data.isEmpty()) {
             throw new RoleplayException("Image API returned no image data", "VISUAL_GENERATION_ERROR", 502);
         }
@@ -129,19 +224,18 @@ public class OpenAiCompatibleImageGenerationClient {
             throw new RoleplayException("Image API returned no image data", "VISUAL_GENERATION_ERROR", 502);
         }
 
-        return new ImageGenerationResponse(imageBytes, "image/png", providerName, model);
+        return new ImageGenerationResponse(imageBytes, "image/png", provider, model);
     }
 
-    private HttpResponse<String> postImageGeneration(String baseUrl, String apiKey, Map<String, Object> body)
-            throws Exception {
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/images/generations"))
-                .timeout(Duration.ofSeconds(120))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                .build();
-        return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    private static List<Path> resolveExistingReferencePaths(List<String> referenceImagePaths) {
+        List<Path> paths = new ArrayList<>();
+        for (String referencePath : referenceImagePaths) {
+            Path path = Path.of(referencePath);
+            if (Files.exists(path)) {
+                paths.add(path);
+            }
+        }
+        return paths;
     }
 
     private byte[] downloadImage(String imageUrl) throws Exception {
