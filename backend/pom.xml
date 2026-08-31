@@ -17,6 +17,7 @@
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.17.5</quarkus.platform.version>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>
+        <surefire.argLine></surefire.argLine>
     </properties>
 
     <dependencyManagement>
@@ -96,7 +97,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
+                    <argLine>${surefire.argLine}</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
@@ -105,4 +106,17 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- JDK 24+ only: suppress sun.misc.Unsafe warnings from transitive libs in tests. -->
+        <profile>
+            <id>jdk-24-plus-unsafe-allow</id>
+            <activation>
+                <jdk>[24,)</jdk>
+            </activation>
+            <properties>
+                <surefire.argLine>--sun-misc-unsafe-memory-access=allow</surefire.argLine>
+            </properties>
+        </profile>
+    </profiles>
 </project>
